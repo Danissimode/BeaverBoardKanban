@@ -127,7 +127,12 @@ public class TicketService
                 t.Comments.Count,
                 t.Activities.Max(a => (DateTime?)a.CreatedAt),
                 t.ParentId,
-                new List<SubTicketInfo>()))
+                new List<SubTicketInfo>())
+            {
+                CliRuntimeId = t.CliRuntimeId,
+                CaoRoleId = t.CaoRoleId,
+                ModelProfileId = t.ModelProfileId
+            })
             .ToListAsync();
 
         // Load children for ALL returned parents, ignoring the status filter so that

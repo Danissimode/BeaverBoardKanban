@@ -392,6 +392,23 @@ internal sealed class ActionExecutor
         if (isHighRisk && !roleConfig.AllowHighRisk)
         {
             _logger.LogWarning("High-risk ticket #{Id} with role '{Role}' does not allow high-risk execution — blocking", firing.TicketId, roleId);
+            // Rollback: if the ticket was already moved to InProgress, move it to Blocked with evidence.
+            if (firing.TicketId is not null)
+            {
+                try
+                {
+                    var t = await _tickets.GetTicketAsync(rt.Slug, firing.TicketId.Value);
+                    if (t is not null && string.Equals(t.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _tickets.MoveTicketAsync(rt.Slug, firing.TicketId.Value, "Blocked", "automation");
+                        await _tickets.AddCommentAsync(rt.Slug, firing.TicketId.Value,
+                            $"Blocked: role '{roleId}' cannot execute high-risk labels [{string.Join(", ", labels)}]. " +
+                            "Human review required. Select a role with allowHighRisk=true (e.g., security-reviewer, reviewer).", "automation");
+                        _logger.LogInformation("Moved blocked high-risk ticket #{Id} from InProgress to Blocked", firing.TicketId.Value);
+                    }
+                }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed to rollback blocked ticket #{Id} to Blocked", firing.TicketId); }
+            }
             return (true, null, agentName);
         }
         var prompt = _promptBuilder.BuildPrompt(new AgentRunRequest(
@@ -916,6 +933,9 @@ internal sealed class ActionExecutor
                 SkillFile = $"{agent}/SKILL.md",
                 ConcurrencyGroup = $"consolidate-{agent}",
                 StartedAt = DateTime.UtcNow,
+                RuntimeId = runtimeId,
+                RoleId = roleId,
+                ModelProfileId = modelProfileId,
             };
             _runs.Register(run);
 

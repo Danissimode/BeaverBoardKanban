@@ -18,6 +18,9 @@ public record TicketSummary(
     List<SubTicketInfo> SubTickets)
 {
     public DateTime? DueDate { get; init; }
+    public string? CliRuntimeId { get; init; }
+    public string? CaoRoleId { get; init; }
+    public string? ModelProfileId { get; init; }
 }
 
 public record SubTicketInfo(int Id, string Title, string Status, string? AssignedTo);
