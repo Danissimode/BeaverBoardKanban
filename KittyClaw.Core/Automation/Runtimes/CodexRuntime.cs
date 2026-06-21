@@ -39,6 +39,17 @@ public sealed class CodexRuntime : IAgentRuntime
 
         var commandDisplay = $"{config.Command} {string.Join(" ", arguments.Select(a => $"\"{a}\""))}";
 
+        // Reject dangerous flags
+        var dangerous = new[] { "--dangerously-bypass-approvals-and-sandbox" };
+        foreach (var arg in arguments)
+        {
+            if (dangerous.Contains(arg, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Runtime '{Id}' rejects dangerous flag '{arg}'. Remove it from configuration.");
+            }
+        }
+
         var processRequest = new ProcessRunRequest(
             FileName: config.Command,
             Arguments: arguments,

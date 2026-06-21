@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace KittyClaw.Core.Automation.Runtimes;
 
-public sealed class AgentRuntimeConfigLoader
+public class AgentRuntimeConfigLoader
 {
     private readonly string _dataDir;
 

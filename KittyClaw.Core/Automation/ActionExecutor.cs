@@ -462,8 +462,8 @@ internal sealed class ActionExecutor
             // Move Ready → InProgress before execution.
             try
             {
-                var ticket = await _tickets.GetTicketAsync(rt.Slug, firing.TicketId.Value);
-                if (ticket is not null && string.Equals(ticket.Status, "Ready", StringComparison.OrdinalIgnoreCase))
+                var readyTicket = await _tickets.GetTicketAsync(rt.Slug, firing.TicketId.Value);
+                if (readyTicket is not null && string.Equals(readyTicket.Status, "Ready", StringComparison.OrdinalIgnoreCase))
                 {
                     await _tickets.MoveTicketAsync(rt.Slug, firing.TicketId.Value, "InProgress", "automation");
                     _logger.LogInformation("Moved ticket #{Id} from Ready to InProgress before run", firing.TicketId.Value);
