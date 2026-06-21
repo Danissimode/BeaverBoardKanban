@@ -74,6 +74,8 @@ public class AgentRuntimeConfigLoader
             ProjectSlug = projectSlug,
             WorkspacePath = workspacePath,
             DefaultRuntime = defaultRuntime,
+            DefaultRole = CaoRoleIds.Developer,
+            DefaultModelProfile = "petpals-coder",
             HighRiskLabels = new[] { "security", "rls", "payments", "stripe", "critical" },
             RuntimeByMember = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -86,107 +88,244 @@ public class AgentRuntimeConfigLoader
                 { "kimi", "kimi-code" },
                 { "antigravity", "antigravity" },
             },
+            RoleByMember = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "mimo", CaoRoleIds.Developer },
+                { "codex", CaoRoleIds.Developer },
+                { "opencode", CaoRoleIds.Developer },
+                { "vibe", CaoRoleIds.Planner },
+                { "kimi", CaoRoleIds.Researcher },
+                { "qa", CaoRoleIds.Qa },
+                { "antigravity", CaoRoleIds.Reviewer },
+            },
+            RoleByRuntime = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "mimo-code", CaoRoleIds.Developer },
+                { "codex", CaoRoleIds.Developer },
+                { "opencode", CaoRoleIds.Developer },
+                { "vibe", CaoRoleIds.Planner },
+                { "kimi-code", CaoRoleIds.Researcher },
+                { "github-copilot", CaoRoleIds.Developer },
+                { "antigravity", CaoRoleIds.Reviewer },
+                { "script", CaoRoleIds.Qa },
+                { "claude-code", CaoRoleIds.Developer },
+            },
+            ModelProfileByRole = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { CaoRoleIds.Planner, "petpals-planner" },
+                { CaoRoleIds.Developer, "petpals-coder" },
+                { CaoRoleIds.Reviewer, "petpals-reviewer" },
+                { CaoRoleIds.SecurityReviewer, "petpals-security-reviewer" },
+                { CaoRoleIds.Researcher, "petpals-researcher" },
+                { CaoRoleIds.Qa, "petpals-cheap" },
+            },
+            ModelProfileByRuntime = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "mimo-code", "petpals-coder" },
+                { "codex", "petpals-coder" },
+                { "kimi-code", "petpals-researcher" },
+                { "script", "petpals-cheap" },
+            },
             Runtimes = new Dictionary<string, AgentRuntimeConfig>(StringComparer.OrdinalIgnoreCase)
             {
+                // ... existing runtime configs
+            },
+            Roles = new Dictionary<string, CaoRoleConfig>(StringComparer.OrdinalIgnoreCase)
+            {
                 {
-                    "mimo-code", new AgentRuntimeConfig
+                    CaoRoleIds.Supervisor, new CaoRoleConfig
                     {
-                        Id = "mimo-code",
-                        Enabled = true,
-                        Command = "mimo",
-                        Args = new[] { "run" },
-                        PromptMode = PromptMode.Argument,
-                        OutputFormat = "json",
-                        TimeoutSeconds = 1800,
-                        DangerouslySkipPermissions = false,
+                        Id = CaoRoleIds.Supervisor,
+                        DisplayName = "Supervisor",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = false,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "assign", "handoff", "comment", "status-read" }
                     }
                 },
                 {
-                    "opencode", new AgentRuntimeConfig
+                    CaoRoleIds.Planner, new CaoRoleConfig
                     {
-                        Id = "opencode",
-                        Enabled = false,
-                        Command = "opencode",
-                        Args = new[] { "run" },
-                        PromptMode = PromptMode.Argument,
-                        TimeoutSeconds = 1800,
-                        Experimental = true,
+                        Id = CaoRoleIds.Planner,
+                        DisplayName = "Planner",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = false,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "read", "comment", "status-read" }
                     }
                 },
                 {
-                    "codex", new AgentRuntimeConfig
+                    CaoRoleIds.Developer, new CaoRoleConfig
                     {
-                        Id = "codex",
-                        Enabled = false,
-                        Command = "codex",
-                        Args = new[] { "exec" },
-                        PromptMode = PromptMode.Argument,
-                        TimeoutSeconds = 1800,
-                        Experimental = true,
+                        Id = CaoRoleIds.Developer,
+                        DisplayName = "Developer",
+                        CanEditFiles = true,
+                        CanRunShell = true,
+                        CanRunTests = true,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = false,
+                        AllowedTools = new[] { "read", "edit", "test", "comment" }
                     }
                 },
                 {
-                    "vibe", new AgentRuntimeConfig
+                    CaoRoleIds.Reviewer, new CaoRoleConfig
                     {
-                        Id = "vibe",
-                        Enabled = false,
-                        Command = "vibe",
-                        Args = new[] { "--prompt" },
-                        PromptMode = PromptMode.Argument,
-                        OutputFormat = "json",
-                        Agent = "plan",
-                        TimeoutSeconds = 1800,
-                        AllowAutoApprove = false,
-                        Experimental = true,
+                        Id = CaoRoleIds.Reviewer,
+                        DisplayName = "Reviewer",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = true,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "read", "test", "comment", "request-changes" }
                     }
                 },
                 {
-                    "kimi-code", new AgentRuntimeConfig
+                    CaoRoleIds.Qa, new CaoRoleConfig
                     {
-                        Id = "kimi-code",
-                        Enabled = false,
-                        Command = "kimi",
-                        Args = new[] { "-p" },
-                        PromptMode = PromptMode.Argument,
-                        OutputFormat = "stream-json",
-                        TimeoutSeconds = 1800,
-                        AllowAutoApprove = false,
-                        Experimental = true,
+                        Id = CaoRoleIds.Qa,
+                        DisplayName = "QA",
+                        CanEditFiles = false,
+                        CanRunShell = true,
+                        CanRunTests = true,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "test", "comment", "request-changes" }
                     }
                 },
                 {
-                    "github-copilot", new AgentRuntimeConfig
+                    CaoRoleIds.SecurityReviewer, new CaoRoleConfig
                     {
-                        Id = "github-copilot",
-                        Enabled = false,
-                        Command = "copilot",
-                        Args = new[] { "--prompt" },
-                        PromptMode = PromptMode.Argument,
-                        TimeoutSeconds = 1800,
-                        Experimental = true,
+                        Id = CaoRoleIds.SecurityReviewer,
+                        DisplayName = "Security Reviewer",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = true,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "read", "test", "comment", "security-review" }
                     }
                 },
                 {
-                    "antigravity", new AgentRuntimeConfig
+                    CaoRoleIds.Researcher, new CaoRoleConfig
                     {
-                        Id = "antigravity",
-                        Enabled = false,
-                        Command = "agy",
-                        Args = Array.Empty<string>(),
-                        PromptMode = PromptMode.Argument,
-                        TimeoutSeconds = 1800,
-                        Experimental = true,
+                        Id = CaoRoleIds.Researcher,
+                        DisplayName = "Researcher",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = false,
+                        CanUseNetwork = true,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "read", "research", "comment" }
                     }
                 },
                 {
-                    "script", new AgentRuntimeConfig
+                    CaoRoleIds.Critic, new CaoRoleConfig
                     {
-                        Id = "script",
-                        Enabled = true,
-                        Command = "pnpm",
-                        Args = new[] { "governance:verify" },
-                        PromptMode = PromptMode.None,
-                        TimeoutSeconds = 1800,
+                        Id = CaoRoleIds.Critic,
+                        DisplayName = "Critic",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = false,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "read", "comment", "challenge", "request-changes" }
+                    }
+                },
+                {
+                    CaoRoleIds.Explainer, new CaoRoleConfig
+                    {
+                        Id = CaoRoleIds.Explainer,
+                        DisplayName = "Explainer",
+                        CanEditFiles = false,
+                        CanRunShell = false,
+                        CanRunTests = false,
+                        CanUseNetwork = false,
+                        CanApprove = false,
+                        AllowHighRisk = true,
+                        AllowedTools = new[] { "read", "comment", "summarize" }
+                    }
+                },
+            },
+            ModelProfiles = new Dictionary<string, ModelProfileConfig>(StringComparer.OrdinalIgnoreCase)
+            {
+                {
+                    "petpals-planner", new ModelProfileConfig
+                    {
+                        Id = "petpals-planner",
+                        DisplayName = "Planner",
+                        Model = "petpals-planner",
+                        Provider = "litellm",
+                        BaseUrl = "http://localhost:4000/v1",
+                        ApiKeyEnv = "LITELLM_API_KEY",
+                    }
+                },
+                {
+                    "petpals-coder", new ModelProfileConfig
+                    {
+                        Id = "petpals-coder",
+                        DisplayName = "Coder",
+                        Model = "petpals-coder",
+                        Provider = "litellm",
+                        BaseUrl = "http://localhost:4000/v1",
+                        ApiKeyEnv = "LITELLM_API_KEY",
+                    }
+                },
+                {
+                    "petpals-reviewer", new ModelProfileConfig
+                    {
+                        Id = "petpals-reviewer",
+                        DisplayName = "Reviewer",
+                        Model = "petpals-reviewer",
+                        Provider = "litellm",
+                        BaseUrl = "http://localhost:4000/v1",
+                        ApiKeyEnv = "LITELLM_API_KEY",
+                    }
+                },
+                {
+                    "petpals-security-reviewer", new ModelProfileConfig
+                    {
+                        Id = "petpals-security-reviewer",
+                        DisplayName = "Security Reviewer",
+                        Model = "petpals-security-reviewer",
+                        Provider = "litellm",
+                        BaseUrl = "http://localhost:4000/v1",
+                        ApiKeyEnv = "LITELLM_API_KEY",
+                        HighRiskAllowed = true,
+                    }
+                },
+                {
+                    "petpals-researcher", new ModelProfileConfig
+                    {
+                        Id = "petpals-researcher",
+                        DisplayName = "Researcher",
+                        Model = "petpals-researcher",
+                        Provider = "litellm",
+                        BaseUrl = "http://localhost:4000/v1",
+                        ApiKeyEnv = "LITELLM_API_KEY",
+                    }
+                },
+                {
+                    "petpals-cheap", new ModelProfileConfig
+                    {
+                        Id = "petpals-cheap",
+                        DisplayName = "Cheap",
+                        Model = "petpals-cheap",
+                        Provider = "litellm",
+                        BaseUrl = "http://localhost:4000/v1",
+                        ApiKeyEnv = "LITELLM_API_KEY",
                     }
                 },
             }

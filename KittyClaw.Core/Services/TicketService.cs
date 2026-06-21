@@ -84,6 +84,16 @@ public class TicketService
         catch { /* column already exists */ }
     }
 
+    private static async Task EnsureOrchestrationColumnsAsync(TodoDbContext db)
+    {
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN CliRuntimeId TEXT NULL"); }
+        catch { /* column already exists */ }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN CaoRoleId TEXT NULL"); }
+        catch { /* column already exists */ }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN ModelProfileId TEXT NULL"); }
+        catch { /* column already exists */ }
+    }
+
     public async Task<List<TicketSummary>> ListTicketsAsync(string projectSlug, string? statusFilter = null, TicketPriority? priorityFilter = null, string? assignedTo = null, string? createdBy = null, string? search = null, int? parentId = null)
     {
         await using var db = _projectService.GetProjectDb(projectSlug);
@@ -92,6 +102,7 @@ public class TicketService
         await EnsureSortOrderColumnAsync(db);
         await EnsureAssignedToColumnAsync(db);
         await EnsureParentIdColumnAsync(db);
+        await EnsureOrchestrationColumnsAsync(db);
         await ColumnService.EnsureBoardColumnsTableAsync(db);
         var query = db.Tickets.Include(t => t.Labels).AsQueryable();
         if (statusFilter is not null)
@@ -144,6 +155,7 @@ public class TicketService
         await EnsureLabelTablesAsync(db);
         await EnsureParentIdColumnAsync(db);
         await EnsureAssignedToColumnAsync(db);
+        await EnsureOrchestrationColumnsAsync(db);
         var ticket = await db.Tickets
             .Include(t => t.Comments.OrderBy(c => c.CreatedAt))
             .Include(t => t.Activities.OrderBy(a => a.CreatedAt))
@@ -158,7 +170,7 @@ public class TicketService
         return ticket;
     }
 
-    public async Task<Ticket> CreateTicketAsync(string projectSlug, string title, string description = "", string createdBy = "owner", string status = "Backlog", List<int>? labelIds = null, TicketPriority priority = TicketPriority.NiceToHave, string? assignedTo = null, int? parentId = null)
+    public async Task<Ticket> CreateTicketAsync(string projectSlug, string title, string description = "", string createdBy = "owner", string status = "Backlog", List<int>? labelIds = null, TicketPriority priority = TicketPriority.NiceToHave, string? assignedTo = null, int? parentId = null, string? cliRuntimeId = null, string? caoRoleId = null, string? modelProfileId = null)
     {
         if (string.IsNullOrWhiteSpace(createdBy))
             throw new InvalidOperationException("Le champ 'createdBy' est requis.");
@@ -169,6 +181,7 @@ public class TicketService
         await EnsureLabelTablesAsync(db);
         await EnsureAssignedToColumnAsync(db);
         await EnsureParentIdColumnAsync(db);
+        await EnsureOrchestrationColumnsAsync(db);
         if (parentId is not null)
         {
             var parentExists = await db.Tickets.AnyAsync(t => t.Id == parentId.Value);
@@ -185,7 +198,10 @@ public class TicketService
             Priority = priority,
             SortOrder = maxSort + 1,
             AssignedTo = assignedTo,
-            ParentId = parentId
+            ParentId = parentId,
+            CliRuntimeId = cliRuntimeId,
+            CaoRoleId = caoRoleId,
+            ModelProfileId = modelProfileId
         };
         if (labelIds is { Count: > 0 })
         {
@@ -232,7 +248,7 @@ public class TicketService
         return ticket;
     }
 
-    public async Task<Ticket?> UpdateTicketAsync(string projectSlug, int ticketId, string? title = null, string? description = null, string author = "owner", TicketPriority? priority = null, string? assignedTo = null)
+    public async Task<Ticket?> UpdateTicketAsync(string projectSlug, int ticketId, string? title = null, string? description = null, string author = "owner", TicketPriority? priority = null, string? assignedTo = null, string? cliRuntimeId = null, string? caoRoleId = null, string? modelProfileId = null)
     {
         if (string.IsNullOrWhiteSpace(author))
             throw new InvalidOperationException("Le champ 'author' est requis.");
@@ -241,6 +257,7 @@ public class TicketService
         await using var db = _projectService.GetProjectDb(projectSlug);
         await EnsureActivityTableAsync(db);
         await EnsureAssignedToColumnAsync(db);
+        await EnsureOrchestrationColumnsAsync(db);
         var ticket = await db.Tickets.FindAsync(ticketId);
         if (ticket is null) return null;
 
@@ -285,6 +302,36 @@ public class TicketService
                 TicketId = ticketId,
                 Author = author,
                 Text = $"a assigné le ticket : {old} → {ticket.AssignedTo ?? "personne"}"
+            });
+        }
+        if (cliRuntimeId is not null && cliRuntimeId != ticket.CliRuntimeId)
+        {
+            ticket.CliRuntimeId = cliRuntimeId.Length == 0 ? null : cliRuntimeId;
+            db.ActivityEntries.Add(new ActivityEntry
+            {
+                TicketId = ticketId,
+                Author = author,
+                Text = $"a changé le runtime CLI : {ticket.CliRuntimeId ?? "défaut"}"
+            });
+        }
+        if (caoRoleId is not null && caoRoleId != ticket.CaoRoleId)
+        {
+            ticket.CaoRoleId = caoRoleId.Length == 0 ? null : caoRoleId;
+            db.ActivityEntries.Add(new ActivityEntry
+            {
+                TicketId = ticketId,
+                Author = author,
+                Text = $"a changé le rôle CAO : {ticket.CaoRoleId ?? "défaut"}"
+            });
+        }
+        if (modelProfileId is not null && modelProfileId != ticket.ModelProfileId)
+        {
+            ticket.ModelProfileId = modelProfileId.Length == 0 ? null : modelProfileId;
+            db.ActivityEntries.Add(new ActivityEntry
+            {
+                TicketId = ticketId,
+                Author = author,
+                Text = $"a changé le profil modèle : {ticket.ModelProfileId ?? "défaut"}"
             });
         }
         ticket.UpdatedAt = DateTime.UtcNow;

@@ -377,10 +377,23 @@ internal sealed class ActionExecutor
         var labels = ticket?.Labels.Select(l => l.Name).ToList() ?? new List<string>();
 
         var config = _configLoader.Load(rt.Slug, rt.Workspace!) ?? _configLoader.CreateDefault(rt.Slug, rt.Workspace!);
-        var router = new AgentRuntimeRouter(config, _runtimes);
-        var runtime = router.Resolve(agentName);
+        var orchestration = new AgentOrchestrationResolver(config);
+        var runtimeId = ticket is not null ? orchestration.ResolveRuntime(ticket) : config.DefaultRuntime;
+        var runtime = _runtimes.FirstOrDefault(r => string.Equals(r.Id, runtimeId, StringComparison.OrdinalIgnoreCase));
+        if (runtime is null)
+            throw new InvalidOperationException($"Runtime '{runtimeId}' is not registered.");
 
-        var isHighRisk = router.IsHighRisk(labels);
+        var roleId = ticket is not null ? orchestration.ResolveRole(ticket, runtimeId) : config.DefaultRole;
+        var roleConfig = orchestration.GetRoleConfig(roleId);
+        var modelProfileId = ticket is not null ? orchestration.ResolveModelProfile(ticket, roleId, runtimeId) : config.DefaultModelProfile;
+        var modelProfileConfig = orchestration.GetModelProfileConfig(modelProfileId);
+
+        var isHighRisk = orchestration.IsHighRisk(labels);
+        if (isHighRisk && !roleConfig.AllowHighRisk)
+        {
+            _logger.LogWarning("High-risk ticket #{Id} with role '{Role}' does not allow high-risk execution — blocking", firing.TicketId, roleId);
+            return (true, null, agentName);
+        }
         var prompt = _promptBuilder.BuildPrompt(new AgentRunRequest(
             ProjectSlug: rt.Slug,
             WorkspacePath: rt.Workspace!,
@@ -396,7 +409,12 @@ internal sealed class ActionExecutor
                 Id = runtime.Id,
                 Enabled = true,
                 Command = runtime.Id,
-            }
+            },
+            RuntimeId: runtimeId,
+            RoleId: roleId,
+            RoleConfig: roleConfig,
+            ModelProfileId: modelProfileId,
+            ModelProfileConfig: modelProfileConfig
         ));
 
         var runtimeConfig = config.Runtimes.TryGetValue(runtime.Id, out var rconf) ? rconf : new AgentRuntimeConfig
@@ -408,7 +426,7 @@ internal sealed class ActionExecutor
             ConcurrencyGroup = group,
         };
 
-        // Overlay action-specific settings
+        // Overlay action-specific settings and model profile
         runtimeConfig = new AgentRuntimeConfig
         {
             Id = runtimeConfig.Id,
@@ -419,7 +437,7 @@ internal sealed class ActionExecutor
             TimeoutSeconds = runtimeConfig.TimeoutSeconds,
             Experimental = runtimeConfig.Experimental,
             WorkingDirectoryOverride = runtimeConfig.WorkingDirectoryOverride,
-            Model = a.Model ?? runtimeConfig.Model,
+            Model = a.Model ?? modelProfileConfig.Model ?? runtimeConfig.Model,
             Agent = runtimeConfig.Agent,
             OutputFormat = runtimeConfig.OutputFormat,
             DangerouslySkipPermissions = runtimeConfig.DangerouslySkipPermissions,
@@ -438,7 +456,12 @@ internal sealed class ActionExecutor
             Assignee: agentName,
             CurrentColumn: firing.TicketStatus,
             Prompt: prompt,
-            RuntimeConfig: runtimeConfig
+            RuntimeConfig: runtimeConfig,
+            RuntimeId: runtimeId,
+            RoleId: roleId,
+            RoleConfig: roleConfig,
+            ModelProfileId: modelProfileId,
+            ModelProfileConfig: modelProfileConfig
         );
 
         var runId = Guid.NewGuid().ToString("N");
@@ -451,6 +474,9 @@ internal sealed class ActionExecutor
             SkillFile = skillFile,
             ConcurrencyGroup = group,
             StartedAt = DateTime.UtcNow,
+            RuntimeId = runtimeId,
+            RoleId = roleId,
+            ModelProfileId = modelProfileId,
         };
         _runs.Register(run);
         _sessions.SetLastDispatched(rt.Workspace!, agentName, DateTime.UtcNow);
@@ -574,20 +600,34 @@ internal sealed class ActionExecutor
                 {
                     var labels = ticket.Labels.Select(l => l.Name).ToList();
                     var config = _configLoader.Load(rt.Slug, rt.Workspace!) ?? _configLoader.CreateDefault(rt.Slug, rt.Workspace!);
-                    var router = new AgentRuntimeRouter(config, _runtimes);
-                    var isHighRisk = router.IsHighRisk(labels);
+                    var orchestration = new AgentOrchestrationResolver(config);
+                    var isHighRisk = orchestration.IsHighRisk(labels);
+                    var resolvedRole = orchestration.ResolveRole(ticket, run.RuntimeId ?? config.DefaultRuntime);
+                    var roleConfig = orchestration.GetRoleConfig(resolvedRole);
+
+                    var evidenceBuilder = new System.Text.StringBuilder();
+                    evidenceBuilder.AppendLine($"Runtime: {run.RuntimeId ?? "unknown"}");
+                    evidenceBuilder.AppendLine($"Role: {resolvedRole}");
+                    evidenceBuilder.AppendLine($"Model: {run.ModelProfileId ?? "unknown"}");
+                    evidenceBuilder.AppendLine($"Exit code: {run.ExitCode}");
 
                     if (isHighRisk)
                     {
-                        await _tickets.AddCommentAsync(rt.Slug, firing.TicketId.Value, "High-risk ticket: human review required.", "automation");
+                        evidenceBuilder.AppendLine("High-risk ticket: human review required.");
+                        if (!roleConfig.AllowHighRisk)
+                        {
+                            evidenceBuilder.AppendLine($"Role '{resolvedRole}' does not allow high-risk execution.");
+                        }
+                        await _tickets.AddCommentAsync(rt.Slug, firing.TicketId.Value, evidenceBuilder.ToString(), "automation");
                     }
 
                     if (run.Status == AgentRunStatus.Completed && run.ExitCode == 0)
                     {
                         if (string.Equals(ticket.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
                         {
-                            await _tickets.MoveTicketAsync(rt.Slug, firing.TicketId.Value, "Review", "automation");
-                            _logger.LogInformation("Moved ticket #{Id} to Review after successful run", firing.TicketId.Value);
+                            var nextStatus = isHighRisk ? "Review" : "Review";
+                            await _tickets.MoveTicketAsync(rt.Slug, firing.TicketId.Value, nextStatus, "automation");
+                            _logger.LogInformation("Moved ticket #{Id} to {Status} after successful run (role={Role}, highRisk={HighRisk})", firing.TicketId.Value, nextStatus, resolvedRole, isHighRisk);
                         }
                     }
                     else if (run.Status == AgentRunStatus.Failed)
@@ -829,8 +869,14 @@ internal sealed class ActionExecutor
             _sessions.Clear(rt.Workspace!, $"{scope}:{agent}", ticketId: null);
 
             var config = _configLoader.Load(rt.Slug, rt.Workspace!) ?? _configLoader.CreateDefault(rt.Slug, rt.Workspace!);
-            var router = new AgentRuntimeRouter(config, _runtimes);
-            var runtime = router.Resolve(agent);
+            var runtimeId = config.RuntimeByMember.TryGetValue(agent, out var mappedRuntime) ? mappedRuntime : config.DefaultRuntime;
+            var runtime = _runtimes.FirstOrDefault(r => string.Equals(r.Id, runtimeId, StringComparison.OrdinalIgnoreCase));
+            if (runtime is null)
+                throw new InvalidOperationException($"Runtime '{runtimeId}' is not registered.");
+            var roleId = config.RoleByMember.TryGetValue(agent, out var mappedRole) ? mappedRole : config.DefaultRole;
+            var roleConfig = config.Roles.TryGetValue(roleId, out var rc) ? rc : new CaoRoleConfig { Id = roleId };
+            var modelProfileId = config.ModelProfileByRole.TryGetValue(roleId, out var mappedModel) ? mappedModel : config.DefaultModelProfile;
+            var modelProfileConfig = config.ModelProfiles.TryGetValue(modelProfileId, out var mpc) ? mpc : new ModelProfileConfig { Id = modelProfileId };
 
             var runId = Guid.NewGuid().ToString("N");
             var request = new AgentRunRequest(
@@ -853,6 +899,11 @@ internal sealed class ActionExecutor
                     InlineSkillContent = instructionContent,
                     ConcurrencyGroup = $"consolidate-{agent}",
                 },
+                RuntimeId: runtimeId,
+                RoleId: roleId,
+                RoleConfig: roleConfig,
+                ModelProfileId: modelProfileId,
+                ModelProfileConfig: modelProfileConfig,
                 RunId: runId
             );
 

@@ -11,5 +11,10 @@ public sealed record AgentRunRequest(
     string? CurrentColumn,
     string Prompt,
     AgentRuntimeConfig RuntimeConfig,
+    string RuntimeId,
+    string RoleId,
+    CaoRoleConfig RoleConfig,
+    string ModelProfileId,
+    ModelProfileConfig ModelProfileConfig,
     string? RunId = null
 );
