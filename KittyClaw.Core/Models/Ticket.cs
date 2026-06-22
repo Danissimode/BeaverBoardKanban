@@ -15,6 +15,7 @@ public class Ticket
     public string? RiskLevel { get; set; }
     public string? Reviewer { get; set; }
     public string? RequiredEvidence { get; set; }
+    public string? EvidenceCompleted { get; set; }
     public string CreatedBy { get; set; } = "owner";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

@@ -98,6 +98,8 @@ public class TicketService
         catch { /* column already exists */ }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN RequiredEvidence TEXT NULL"); }
         catch { /* column already exists */ }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN EvidenceCompleted TEXT NULL"); }
+        catch { /* column already exists */ }
     }
 
     public async Task<List<TicketSummary>> ListTicketsAsync(string projectSlug, string? statusFilter = null, TicketPriority? priorityFilter = null, string? assignedTo = null, string? createdBy = null, string? search = null, int? parentId = null)
@@ -140,7 +142,8 @@ public class TicketService
                 ModelProfileId = t.ModelProfileId,
                 RiskLevel = t.RiskLevel,
                 Reviewer = t.Reviewer,
-                RequiredEvidence = t.RequiredEvidence
+                RequiredEvidence = t.RequiredEvidence,
+                EvidenceCompleted = t.EvidenceCompleted
             })
             .ToListAsync();
 
@@ -218,7 +221,8 @@ public class TicketService
             ModelProfileId = modelProfileId,
             RiskLevel = riskLevel,
             Reviewer = reviewer,
-            RequiredEvidence = requiredEvidence
+            RequiredEvidence = requiredEvidence,
+            EvidenceCompleted = null
         };
         if (labelIds is { Count: > 0 })
         {
@@ -265,7 +269,7 @@ public class TicketService
         return ticket;
     }
 
-    public async Task<Ticket?> UpdateTicketAsync(string projectSlug, int ticketId, string? title = null, string? description = null, string author = "owner", TicketPriority? priority = null, string? assignedTo = null, string? cliRuntimeId = null, string? caoRoleId = null, string? modelProfileId = null, string? riskLevel = null, string? reviewer = null, string? requiredEvidence = null)
+    public async Task<Ticket?> UpdateTicketAsync(string projectSlug, int ticketId, string? title = null, string? description = null, string author = "owner", TicketPriority? priority = null, string? assignedTo = null, string? cliRuntimeId = null, string? caoRoleId = null, string? modelProfileId = null, string? riskLevel = null, string? reviewer = null, string? requiredEvidence = null, string? evidenceCompleted = null)
     {
         if (string.IsNullOrWhiteSpace(author))
             throw new InvalidOperationException("Le champ 'author' est requis.");
@@ -379,6 +383,16 @@ public class TicketService
                 TicketId = ticketId,
                 Author = author,
                 Text = $"a changé les critères de preuve : {ticket.RequiredEvidence ?? "aucun"}"
+            });
+        }
+        if (evidenceCompleted is not null && evidenceCompleted != ticket.EvidenceCompleted)
+        {
+            ticket.EvidenceCompleted = evidenceCompleted.Length == 0 ? null : evidenceCompleted;
+            db.ActivityEntries.Add(new ActivityEntry
+            {
+                TicketId = ticketId,
+                Author = author,
+                Text = "a mis à jour l'état des preuves"
             });
         }
         ticket.UpdatedAt = DateTime.UtcNow;

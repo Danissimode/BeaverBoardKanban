@@ -24,6 +24,7 @@ public record TicketSummary(
     public string? RiskLevel { get; init; }
     public string? Reviewer { get; init; }
     public string? RequiredEvidence { get; init; }
+    public string? EvidenceCompleted { get; init; }
 }
 
 public record SubTicketInfo(int Id, string Title, string Status, string? AssignedTo);

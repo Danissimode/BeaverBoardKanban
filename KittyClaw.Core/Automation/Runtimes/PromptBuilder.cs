@@ -47,6 +47,8 @@ public sealed class PromptBuilder : IAgentPromptBuilder
         sb.AppendLine("- Do not create duplicate architecture.");
         sb.AppendLine("- Do not auto-mark this task as Done.");
         sb.AppendLine("- For high-risk labels, produce evidence and request human review.");
+        sb.AppendLine("- DESTRUCTIVE OPERATIONS: Before executing any destructive operation (rm -rf, git push --force, git reset --hard, DROP TABLE, DELETE without WHERE, rm -rf ~, modifying .env/secrets, changing API keys), STOP and ask for explicit human confirmation.");
+        sb.AppendLine("- Never execute destructive commands automatically. Always explain the risk and wait for confirmation.");
         sb.AppendLine("## Required Final Output");
         sb.AppendLine("Return:");
         sb.AppendLine("1. role used;");

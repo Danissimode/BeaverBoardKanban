@@ -639,6 +639,28 @@ else
                 </div>
             }
 
+            @* ── Evidence checklist ── *@
+            @if (!string.IsNullOrEmpty(_selectedTicket.RequiredEvidence))
+            {
+                <div class="orch-section">
+                    <div class="orch-section-title">Evidence Checklist</div>
+                    <div class="evidence-checklist">
+                        @foreach (var item in ParseEvidenceItems(_selectedTicket.RequiredEvidence))
+                        {
+                            var isDone = IsEvidenceItemDone(item, _selectedTicket.EvidenceCompleted);
+                            <div class="evidence-item">
+                                <input type="checkbox"
+                                       class="evidence-checkbox"
+                                       checked="@isDone"
+                                       @onchange="async (e) => await ToggleEvidenceItem(item, (bool)((ChangeEventArgs)e).Value!)
+                                       " />
+                                <span class="evidence-label @(isDone ? "evidence-label--done" : "")">@item</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
             @* ── Sub-tickets section ── *@
             @{ var selectedSummary = _tickets.FirstOrDefault(t => t.Id == _selectedTicket.Id); }
             @if (selectedSummary?.SubTickets is { Count: > 0 })
@@ -1795,6 +1817,58 @@ else
 
     private string GetColumnColor(string status) =>
         _columns.FirstOrDefault(c => c.Name == status)?.Color ?? "#5a6a80";
+
+    // Evidence checklist helpers
+    private static string[] ParseEvidenceItems(string requiredEvidence)
+    {
+        if (string.IsNullOrWhiteSpace(requiredEvidence)) return [];
+        return requiredEvidence
+            .Split([',', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToArray();
+    }
+
+    private static bool IsEvidenceItemDone(string item, string? evidenceCompleted)
+    {
+        if (string.IsNullOrWhiteSpace(evidenceCompleted)) return false;
+        try
+        {
+            var done = System.Text.Json.JsonSerializer.Deserialize<List<string>>(evidenceCompleted);
+            return done?.Contains(item, StringComparer.OrdinalIgnoreCase) ?? false;
+        }
+        catch { return false; }
+    }
+
+    private async Task ToggleEvidenceItem(string item, bool isChecked)
+    {
+        if (_selectedTicket is null) return;
+        var ticketId = _selectedTicket.Id;
+        List<string> done;
+        try
+        {
+            done = string.IsNullOrWhiteSpace(_selectedTicket.EvidenceCompleted)
+                ? []
+                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(_selectedTicket.EvidenceCompleted) ?? [];
+        }
+        catch { done = []; }
+        if (isChecked)
+        {
+            if (!done.Contains(item, StringComparer.OrdinalIgnoreCase))
+                done.Add(item);
+        }
+        else
+        {
+            done.RemoveAll(s => s.Equals(item, StringComparison.OrdinalIgnoreCase));
+        }
+        var updated = await TicketService.UpdateTicketAsync(Slug, ticketId, evidenceCompleted: System.Text.Json.JsonSerializer.Serialize(done));
+        if (updated is not null)
+        {
+            _selectedTicket = updated;
+            await RefreshTicketsAndTouch();
+            await RebuildPipelineAsync();
+        }
+    }
 
     // Unparent drop zone
     private void OnUnparentDragOver() => _unparentHover = true;

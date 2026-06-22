@@ -1,5 +1,6 @@
 namespace KittyClaw.Web.Api;
 
+using KittyClaw.Core.Services;
 using KittyClaw.Web.Services;
 
 public static partial class Endpoints
@@ -36,5 +37,13 @@ public static partial class Endpoints
                 await ctx.Response.Body.FlushAsync();
             }
         }).WithTags("Board").Produces(StatusCodes.Status200OK).RequireCors("AllowAll");
+
+        // Settings endpoints
+        api.MapGet("/settings", async (SettingsService svc) => Results.Ok(await svc.LoadAsync())).WithTags("Settings");
+        api.MapPost("/settings", async (SettingsData data, SettingsService svc) =>
+        {
+            await svc.SaveAsync(data);
+            return Results.Ok(data);
+        }).WithTags("Settings");
     }
 }

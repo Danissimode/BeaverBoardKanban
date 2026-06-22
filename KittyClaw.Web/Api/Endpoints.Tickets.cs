@@ -33,7 +33,7 @@ public static partial class Endpoints
         {
             try
             {
-                var ticket = await ts.UpdateTicketAsync(slug, id, req.Title, req.Description, req.Author, req.Priority, req.AssignedTo, req.CliRuntimeId, req.CaoRoleId, req.ModelProfileId, req.RiskLevel, req.Reviewer, req.RequiredEvidence);
+                var ticket = await ts.UpdateTicketAsync(slug, id, req.Title, req.Description, req.Author, req.Priority, req.AssignedTo, req.CliRuntimeId, req.CaoRoleId, req.ModelProfileId, req.RiskLevel, req.Reviewer, req.RequiredEvidence, req.EvidenceCompleted);
                 if (ticket is not null && req.LabelIds is not null)
                     await ts.SetTicketLabelsAsync(slug, id, req.LabelIds);
                 if (ticket is not null) notifier.NotifyProjectUpdated(slug);
