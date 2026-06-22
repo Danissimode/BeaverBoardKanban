@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KittyClaw.Core.Automation;
+using KittyClaw.Core.Automation.Runtimes;
 using KittyClaw.Core.Services;
 using KittyClaw.Web.Api;
 using KittyClaw.Web.Components;
@@ -50,6 +51,7 @@ builder.Services.AddSingleton<DashboardService>();
 builder.Services.AddSingleton<AgentsTemplateService>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardFilterState>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardSortState>();
+builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<KittyClaw.Web.Services.BoardUpdateNotifier>();
 builder.Services.AddScoped<KittyClaw.Web.Services.EscapeKeyStack>();
 
@@ -63,6 +65,31 @@ builder.Services.AddSingleton<AgentRunRegistry>(sp => new AgentRunRegistry(sp.Ge
 // KITTYCLAW_MAX_CONCURRENT_AGENTS env var if 3 is too tight or too loose for the host.
 var maxConcurrent = int.TryParse(Environment.GetEnvironmentVariable("KITTYCLAW_MAX_CONCURRENT_AGENTS"), out var mc) && mc > 0 ? mc : 3;
 builder.Services.AddSingleton(new RunConcurrencyGate(maxConcurrent));
+
+// Runtime config
+builder.Services.AddSingleton<AgentRuntimeConfigLoader>(sp => new AgentRuntimeConfigLoader(dataDir));
+builder.Services.AddSingleton(sp =>
+{
+    var loader = sp.GetRequiredService<AgentRuntimeConfigLoader>();
+    return loader.Load("petpals") ?? loader.CreateDefault("petpals", "/Users/danissimode/Documents/GitHub/PetPalsCursor");
+});
+
+// Runtimes (all implement IAgentRuntime)
+builder.Services.AddSingleton<ProcessRunner>();
+builder.Services.AddSingleton<IAgentRuntime, ClaudeCodeRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, MimoCodeRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, ScriptRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, OpenCodeRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, CodexRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, GitHubCopilotRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, AntigravityRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, VibeRuntime>();
+builder.Services.AddSingleton<IAgentRuntime, KimiCodeRuntime>();
+
+builder.Services.AddSingleton<AgentRuntimeRouter>();
+builder.Services.AddSingleton<IAgentPromptBuilder, PromptBuilder>();
+
+// Keep ClaudeRunner for backward compat (used by ClaudeCodeRuntime)
 builder.Services.AddSingleton<ClaudeRunner>();
 builder.Services.AddSingleton<CostTracker>();
 builder.Services.AddSingleton<AutomationEngine>();
@@ -82,6 +109,14 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<KittyClaw.Web.Serv
 // register nothing, so the UI hides the Parcourir button.
 if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<KittyClaw.Core.Platform.IFolderPicker, KittyClaw.Core.Platform.WindowsFolderPicker>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
 
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -110,6 +145,7 @@ app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
 
 app.UseAntiforgery();
 
+app.UseCors("AllowAll");
 app.MapOpenApi();
 app.MapTodoApi();
 
