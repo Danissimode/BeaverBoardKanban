@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using KittyClaw.Core.Automation.Runners;
 using KittyClaw.Core.Automation.Runtimes;
 using KittyClaw.Core.Automation.Triggers;
 using KittyClaw.Core.Services;
@@ -28,14 +29,21 @@ public sealed class AutomationEngine : BackgroundService
         ClaudeRunner runner,
         CostTracker cost,
         LocalizationService loc,
-        ILogger<AutomationEngine> logger)
+        ILogger<AutomationEngine> logger,
+        RunnerRegistry? runnerRegistry = null,
+        ITicketExecutionMetadataStore? metadataStore = null,
+        IExecutionPolicyService? policyService = null,
+        IWorktreeService? worktreeService = null)
     {
         _runs = runs;
         _logger = logger;
 
         _runtimeManager = new ProjectRuntimeManager(store, triggerState, logger);
         var runState = new RunStateManager(runs, cost, tickets, logger);
-        var executor = new ActionExecutor(tickets, members, labels, sessions, runs, runtimes, promptBuilder, configLoader, cost, loc, projects, runState, logger);
+        var executor = new ActionExecutor(
+            tickets, members, labels, sessions, runs, runtimes, 
+            promptBuilder, configLoader, cost, loc, projects, runState, logger,
+            runnerRegistry, metadataStore, policyService, worktreeService);
         _triggerHandler = new TriggerHandler(projects, _runtimeManager, executor, tickets, members, sessions, runs, logger);
 
         store.OnConfigChangedOnDisk += slug =>
@@ -54,7 +62,7 @@ public sealed class AutomationEngine : BackgroundService
     public Task ReloadProjectAsync(string slug) => _runtimeManager.ReloadProjectAsync(slug);
 
     /// <summary>
-    /// Push an external signal to all enabled automations of <paramref name="projectSlug"/>.
+    /// Push an external signal to all enabled automations of <paramref name="projectSlug"/>. 
     /// Each trigger that implements <see cref="ITrigger.TryHandleExternalSignal"/> can produce
     /// firings that are enqueued and dispatched at the beginning of the very next tick (&lt;1 s).
     /// </summary>
