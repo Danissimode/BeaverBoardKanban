@@ -230,6 +230,12 @@ public sealed class RunAgentActionSpec : ActionSpec
     public Dictionary<string, string> Env { get; set; } = new();
     public string? Model { get; set; }
     public bool RestoreStatusOnFail { get; set; } = true;
+
+    // AI Provider Integration
+    public ExecutionMode? ExecutionMode { get; set; }
+    public string? Provider { get; set; }
+    public string? Profile { get; set; }
+    public bool UseEffectiveConfig { get; set; } = true;
 }
 
 public sealed class MoveTicketStatusActionSpec : ActionSpec
@@ -258,66 +264,36 @@ public sealed class AddCommentActionSpec : ActionSpec
 {
     public override string UiTypeKey => "addComment";
     /// <summary>Comment content. Supports placeholders: {ticketId}, {ticketTitle}, {assignee}.</summary>
-    public string Content { get; set; } = "";
-    /// <summary>Author of the comment (member slug).</summary>
-    public string Author { get; set; } = "";
+    public required string Content { get; set; }
 }
 
-/// <summary>Git-commits the given agent's memory (the .agents/{agent}/memory/ topic layout and/or
-/// the legacy flat memory.md) after a run.</summary>
 public sealed class CommitAgentMemoryActionSpec : ActionSpec
 {
     public override string UiTypeKey => "commitAgentMemory";
     public required string Agent { get; set; }
 }
 
-/// <summary>
-/// Spawns a focused claude pass whose only job is to distill lessons from the parent run
-/// into the agent's memory (the .agents/{agent}/memory/ topic layout). Instructions are read
-/// from an external markdown file so they can be tweaked without rebuilding.
-/// </summary>
 public sealed class ConsolidateAgentMemoryActionSpec : ActionSpec
 {
     public override string UiTypeKey => "consolidateAgentMemory";
-    /// <summary>Agent slug. Supports {assignee} placeholder.</summary>
     public required string Agent { get; set; }
-    /// <summary>Max turns for the consolidation pass.</summary>
-    public int MaxTurns { get; set; } = 5;
-    /// <summary>Path to the instruction markdown file, relative to workspace root.</summary>
-    public string InstructionFile { get; set; } = ".agents/memory-consolidation.md";
 }
 
-/// <summary>
-/// Creates a new ticket in the project. Works without a triggering ticket (interval, cron, board-idle, …).
-/// Supports date placeholders in Title and Description: {date} (today), {monday} (Monday of current week), {firstOfMonth}.
-/// When <see cref="SkipIfExists"/> is true (default), creation is skipped if an open ticket with the resolved title already exists.
-/// </summary>
-public sealed class CreateTicketActionSpec : ActionSpec
-{
-    public override string UiTypeKey => "createTicket";
-    /// <summary>Ticket title. Supports {date}, {monday}, {firstOfMonth}.</summary>
-    public string Title { get; set; } = "";
-    /// <summary>Ticket description (optional). Supports {date}, {monday}, {firstOfMonth}.</summary>
-    public string Description { get; set; } = "";
-    public string Status { get; set; } = "Todo";
-    public string? AssignedTo { get; set; }
-    public string Priority { get; set; } = "NiceToHave";
-    /// <summary>Label names to attach to the new ticket.</summary>
-    public List<string> Labels { get; set; } = new();
-    public int? ParentId { get; set; }
-    public string CreatedBy { get; set; } = "automation";
-    /// <summary>Skip creation if an open ticket with the same resolved title already exists.</summary>
-    public bool SkipIfExists { get; set; } = true;
-}
-
-/// <summary>Runs a PowerShell script or file with optional arguments and timeout.</summary>
 public sealed class ExecutePowerShellActionSpec : ActionSpec
 {
     public override string UiTypeKey => "executePowerShell";
-    public string Script { get; set; } = "";
-    public string? ScriptFile { get; set; }
-    public List<string> Arguments { get; set; } = new();
-    public int TimeoutSeconds { get; set; } = 60;
-    public bool AbortOnFailure { get; set; }
+    public required string Script { get; set; }
+    public string? WorkingDirectory { get; set; }
     public Dictionary<string, string> Env { get; set; } = new();
+}
+
+public sealed class CreateTicketActionSpec : ActionSpec
+{
+    public override string UiTypeKey => "createTicket";
+    public required string Title { get; set; }
+    public string? Description { get; set; }
+    public string? Assignee { get; set; }
+    public List<string> Labels { get; set; } = new();
+    public string? Column { get; set; }
+    public int? ParentId { get; set; }
 }

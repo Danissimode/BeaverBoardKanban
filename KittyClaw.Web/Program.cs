@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KittyClaw.Core.Automation;
+using KittyClaw.Core.Automation.AI;
 using KittyClaw.Core.Automation.Runtimes;
 using KittyClaw.Core.Services;
 using KittyClaw.Web.Api;
@@ -91,6 +92,8 @@ builder.Services.AddSingleton<IAgentPromptBuilder, PromptBuilder>();
 
 // Keep ClaudeRunner for backward compat (used by ClaudeCodeRuntime)
 builder.Services.AddSingleton<ClaudeRunner>();
+
+\n// AI Provider Integration\nbuilder.Services.AddSingleton<OpenCodeSdkClient>();\nbuilder.Services.AddSingleton<AIProviderFactory>();\nbuilder.Services.AddSingleton<AIProviderService>();
 builder.Services.AddSingleton<CostTracker>();
 builder.Services.AddSingleton<AutomationEngine>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AutomationEngine>());
