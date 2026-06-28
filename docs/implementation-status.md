@@ -1,6 +1,6 @@
 # Implementation Status
 
-_Generated: 2026-06-28 | Branch: main | Commit: 86246ad_
+_Generated: 2026-06-28 | Branch: main | Commit: 088cf7b_
 
 ## Build & Test Status
 
@@ -57,6 +57,16 @@ Engine Layer (KittyClaw)          Product Layer (Beaver Board)
 
 ## Open Questions
 
-1. PR #3/#4 status on GitHub — need to check if draft or merged
-2. README.OpenCode.md claims vs actual implementation
-3. FailureLogbook SQLite migration timeline
+1. ~~PR #3/#4 status on GitHub~~ — RESOLVED: stale branches deleted, OpenCode integration already in main
+2. README.OpenCode.md claims vs actual implementation — needs audit
+3. FailureLogbook SQLite migration timeline — P5 priority
+
+## PR Cleanup (2026-06-28)
+
+Deleted stale remote branches:
+- `vibe/opencode-integration-f988e2` (PR #3 candidate)
+- `vibe/pr4-ai-provider-integration-cd332a` (PR #4 candidate)
+- `vibe/pr4-upstream-opencode-integration-cd332a` (PR #4 candidate)
+- `copilot/fix-138711320-1276305011-fb2e8409-b666-4575-9c41-b85299537de0` (stale)
+
+Reason: These branches deleted our work (implementation-status.md, branding/branding.json, upstream-branding-boundary.md) and are superseded by current main.
