@@ -308,6 +308,17 @@ public class TicketService
         var oldStatus = ticket.Status;
         if (string.Equals(oldStatus, newStatus, StringComparison.OrdinalIgnoreCase))
             return ticket; // already in target status — no-op
+
+        // Done/Review gate: prevent moving to Done without review
+        if (string.Equals(newStatus, "Done", StringComparison.OrdinalIgnoreCase))
+        {
+            var gateResult = await CheckDoneGateAsync(db, ticket);
+            if (!gateResult.Allowed)
+            {
+                throw new InvalidOperationException($"Cannot move to Done: {gateResult.Reason}");
+            }
+        }
+
         ticket.Status = newStatus;
         ticket.UpdatedAt = DateTime.UtcNow;
         db.ActivityEntries.Add(new ActivityEntry
@@ -319,6 +330,36 @@ public class TicketService
         await db.SaveChangesAsync();
         TicketStatusChanged?.Invoke(projectSlug, ticketId, oldStatus, newStatus);
         return ticket;
+    }
+
+    private async Task<(bool Allowed, string Reason)> CheckDoneGateAsync(TodoDbContext db, Ticket ticket)
+    {
+        // Check if reviewer is assigned
+        if (string.IsNullOrWhiteSpace(ticket.Reviewer))
+            return (false, "No reviewer assigned. Set a reviewer before moving to Done.");
+
+        // Check if risk level is assessed
+        if (string.IsNullOrWhiteSpace(ticket.RiskLevel))
+            return (false, "Risk level not assessed. Set risk level before moving to Done.");
+
+        // Check if required evidence is present
+        if (!string.IsNullOrWhiteSpace(ticket.RequiredEvidence))
+        {
+            var requiredList = ticket.RequiredEvidence.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            var completedList = string.IsNullOrWhiteSpace(ticket.EvidenceCompleted)
+                ? Array.Empty<string>()
+                : ticket.EvidenceCompleted.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var required in requiredList)
+            {
+                if (!completedList.Any(c => c.Trim().Equals(required.Trim(), StringComparison.OrdinalIgnoreCase)))
+                {
+                    return (false, $"Required evidence missing: {required.Trim()}");
+                }
+            }
+        }
+
+        return (true, "");
     }
 
     public async Task<Ticket?> UpdateTicketAsync(string projectSlug, int ticketId, string? title = null, string? description = null, string author = "owner", TicketPriority? priority = null, string? assignedTo = null, string? cliRuntimeId = null, string? caoRoleId = null, string? modelProfileId = null, string? riskLevel = null, string? reviewer = null, string? requiredEvidence = null, string? evidenceCompleted = null, string? executionModeOverride = null, string? openCodeAgent = null, string? providerOverride = null, string? modelOverride = null, string? profileOverride = null, bool? useWorktree = null, string? forbiddenPaths = null, string? planStatus = null, string? planBody = null, bool? requiresPlan = null)
