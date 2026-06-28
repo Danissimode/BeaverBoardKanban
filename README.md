@@ -1,20 +1,22 @@
-# KittyClaw
+# Beaver Board
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=nqDHH1T5TwA">
-    <img src="https://img.youtube.com/vi/nqDHH1T5TwA/maxresdefault.jpg" alt="KittyClaw demo" width="800" />
+    <img src="https://img.youtube.com/vi/nqDHH1T5TwA/maxresdefault.jpg" alt="Beaver Board demo" width="800" />
   </a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo.webp" alt="KittyClaw demo" width="800" />
+  <img src="docs/assets/demo.webp" alt="Beaver Board demo" width="800" />
 </p>
 
 <p align="center">
   <a href="https://kittyclaw.dev">kittyclaw.dev</a> · <a href="https://kittyclaw.dev/#waitlist">Get early access</a>
 </p>
 
-A kanban board that **orchestrates agentic projects**. Each column is a workflow stage (`Backlog`, `Todo`, `InProgress`, `Review`, `Done`, `Blocked`). Each project has members that can be human owners or **LLM agents** (programmer, groomer, producer, qa-tester, committer, code-janitor, evaluator, documentalist). A background `AutomationEngine` dispatches these agents based on triggers (column changes, comments, intervals, git commits, …), running them as `claude` CLI subprocesses whose output streams into an in-app drawer.
+**Beaver Board** is a kanban board that **orchestrates agentic projects**. Each column is a workflow stage (`Backlog`, `Todo`, `InProgress`, `Review`, `Done`, `Blocked`). Each project has members that can be human owners or **LLM agents** (programmer, groomer, producer, qa-tester, committer, code-janitor, evaluator, documentalist). A background `AutomationEngine` dispatches these agents based on triggers (column changes, comments, intervals, git commits, …), running them as `claude` CLI subprocesses whose output streams into an in-app drawer.
+
+*Forked from [KittyClaw](https://github.com/Ekioo/KittyClaw) — upstream-compatible engine, distinct product identity.*
 
 ## Tech Stack
 
@@ -42,7 +44,7 @@ run.bat        (Windows)
 ./run.sh       (macOS / Linux)
 ```
 
-Both wrap `dotnet watch --project KittyClaw.Web --non-interactive` and serve the app at **http://localhost:5230** with hot reload enabled.
+Both wrap `dotnet watch --project KittyClaw.Web --non-interactive` and serve Beaver Board at **http://localhost:5230** with hot reload enabled.
 
 ### Creating a project
 
@@ -58,7 +60,7 @@ The workspace folder itself is never deleted by KittyClaw, even when you delete 
 
 ### Data Storage
 
-All KittyClaw data is stored locally in `%APPDATA%/KittyClaw/`:
+All Beaver Board data is stored locally in `%APPDATA%/KittyClaw/`:
 
 - `registry.db` — project registry
 - `projects/{slug}.db` — per-project database (tickets, comments, labels, columns, members)
@@ -194,3 +196,7 @@ Tiles can be created from the dashboard's AI chat panel by describing what you w
 Check out my other projects at **[ekioo.com](https://ekioo.com)**.
 
 Follow me on X: **[@DamienHOFFSCHIR](https://x.com/DamienHOFFSCHIR)**
+
+---
+
+*Beaver Board — Agentic development board for builders. Forked from KittyClaw.*

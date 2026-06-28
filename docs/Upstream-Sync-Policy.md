@@ -1,6 +1,6 @@
 # Upstream Sync Policy
 
-This document explains how KittyClawOpen maintains compatibility with the official KittyClaw repository while adding OpenCode integration.
+This document explains how Beaver Board maintains compatibility with the official KittyClaw repository while adding OpenCode integration.
 
 ## Architecture Overview
 
@@ -220,8 +220,8 @@ KittyClaw.Web/
 
 ## Version Compatibility
 
-| KittyClawOpen Version | Official KittyClaw Version | Notes |
-|------------------------|---------------------------|-------|
+| Beaver Board Version | Official KittyClaw Version | Notes |
+|----------------------|---------------------------|-------|
 | Current | Latest | Full compatibility |
 
 ### Breaking Changes
@@ -230,8 +230,8 @@ None. All changes are additive and backward compatible.
 
 ### Migration Path
 
-1. **From official KittyClaw**: Just clone KittyClawOpen and use it
-2. **From older KittyClawOpen**: Pull latest changes
+1. **From official KittyClaw**: Just clone Beaver Board and use it
+2. **From older Beaver Board**: Pull latest changes
 
 ## Contributing
 
@@ -288,7 +288,7 @@ If you get build errors after upstream merge:
 
 ## Summary
 
-**Key Principle**: KittyClawOpen should be able to merge official KittyClaw updates with **low conflict risk**.
+**Key Principle**: Beaver Board should be able to merge official KittyClaw updates with **low conflict risk**.
 
 **How**: By keeping all OpenCode-specific code isolated in Zone B and only adding generic extension points in Zone A.
 

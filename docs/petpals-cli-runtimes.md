@@ -1,4 +1,4 @@
-# KittyClawOpen CLI Runtimes
+# Beaver Board CLI Runtimes
 
 ## Supported Runtimes
 
@@ -66,13 +66,13 @@ var runtime = router.Resolve(runtimeId);
 
 ```bash
 bash packaging/macos/install-app.sh
-open /Applications/KittyClawOpen.app
+open /Applications/Beaver\ Board.app
 ```
 
 - Opens `http://localhost:8080` (PWA) or falls back to `http://localhost:5230`
 - Detects existing backend to avoid duplicates
-- Logs: `~/Library/Logs/KittyClawOpen/`
-- State: `~/Library/Application Support/KittyClawOpen/`
+- Logs: `~/Library/Logs/BeaverBoard/`
+- State: `~/Library/Application Support/BeaverBoard/`
 
 ## Smoke Tests
 

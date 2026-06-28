@@ -1,9 +1,17 @@
 @inherits LayoutComponentBase
+@using KittyClaw.Web.Components.TeamChat
+@using KittyClaw.Web.Services
+@inject TeamChatState ChatState
 
 <EscapeKeyHost />
 @Body
 
 <UpdateBanner />
+
+@if (!string.IsNullOrEmpty(ChatState.CurrentProjectSlug))
+{
+    <TeamChatDock ProjectSlug="@ChatState.CurrentProjectSlug" />
+}
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

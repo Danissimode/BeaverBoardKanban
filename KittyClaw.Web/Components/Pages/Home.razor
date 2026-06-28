@@ -16,12 +16,12 @@
 @rendermode InteractiveServer
 @implements IDisposable
 
-<PageTitle>@L["HomeTitle"]</PageTitle>
+<PageTitle>Beaver Board</PageTitle>
 
 @if (!_showOnboarding)
 {
 <div class="page-header home-header">
-    <img src="/KittyClaw-Logo-Horizontal.webp" alt="KittyClaw" class="home-logo-horizontal" />
+    <img src="/BeaverBoard-Logo-Horizontal.webp" alt="Beaver Board" class="home-logo-horizontal" />
 </div>
 
 <div class="project-list" @oncontextmenu="ShowSortMenu" @oncontextmenu:preventDefault>
@@ -83,8 +83,8 @@
 {
     <div class="modal-backdrop">
         <div class="modal-dialog onboarding-dialog" @onclick:stopPropagation>
-            <img src="/KittyClaw.webp" alt="KittyClaw" class="onboarding-logo" />
-            <h2>@L["OnboardingTitle"]</h2>
+            <img src="/BeaverBoard.webp" alt="Beaver Board" class="onboarding-logo" />
+            <h2>Welcome to Beaver Board</h2>
             <p>@L["OnboardingIntro1"]</p>
             <p>@L["OnboardingIntro2"]</p>
 

@@ -5,6 +5,7 @@ using KittyClaw.Core.Automation.Runners;
 using KittyClaw.Core.Integrations.OpenCode;
 using KittyClaw.Core.Automation.Runtimes;
 using KittyClaw.Core.Services;
+using KittyClaw.Core.TeamChat;
 using KittyClaw.Web.Api;
 using KittyClaw.Web.Components;
 
@@ -106,6 +107,17 @@ builder.Services.AddSingleton<OpenCodePolicyConfig>();
 builder.Services.AddSingleton<OpenCodeRunner>();
 builder.Services.AddSingleton<IWorktreeService, WorktreeService>();
 
+// Failure logbook (in-memory, survives across requests)
+builder.Services.AddSingleton<FailureLogStore>();
+
+// Team Chat
+builder.Services.AddSingleton<ITeamChatService>(sp => new TeamChatService(dataDir));
+builder.Services.AddSingleton<ITeamCommandRouter, TeamCommandRouter>();
+builder.Services.AddSingleton<IRunSteeringBridge, RunSteeringBridge>();
+builder.Services.AddSingleton<ITeamChatMentionParser, TeamChatMentionParser>();
+builder.Services.AddSingleton<IAgentChatSignalFilter, AgentChatSignalFilter>();
+builder.Services.AddSingleton<IAgentChatPolicyService>(sp => new AgentChatPolicyService(dataDir));
+builder.Services.AddSingleton<IAgentCommunicationService, AgentCommunicationService>();
 
 // Configure RunnerRegistry with all available runners
 builder.Services.AddSingleton<RunnerRegistry>(sp =>
@@ -121,6 +133,8 @@ builder.Services.AddSingleton<RunnerRegistry>(sp =>
 });
 builder.Services.AddSingleton<AutomationEngine>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AutomationEngine>());
+builder.Services.AddSingleton<TicketAutoRunService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TicketAutoRunService>());
 builder.Services.AddSingleton<GitRepositoryWatcher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<GitRepositoryWatcher>());
 builder.Services.AddSingleton<KittyClaw.Core.Services.DashboardTileGate>();
@@ -128,6 +142,7 @@ builder.Services.AddSingleton<KittyClaw.Core.Services.DashboardScriptRunner>();
 builder.Services.AddSingleton<KittyClaw.Core.Services.DashboardRefreshService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<KittyClaw.Core.Services.DashboardRefreshService>());
 builder.Services.AddSingleton<KittyClaw.Web.Services.AgentRunsState>();
+builder.Services.AddScoped<KittyClaw.Web.Services.TeamChatState>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<KittyClaw.Web.Services.UpdateCheckService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<KittyClaw.Web.Services.UpdateCheckService>());

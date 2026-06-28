@@ -1,6 +1,6 @@
-# KittyClawOpen - OpenCode Integration
+# Beaver Board - OpenCode Integration
 
-KittyClawOpen extends [KittyClaw](https://github.com/Ekioo/KittyClaw) with **upstream-friendly OpenCode integration**, enabling direct execution of OpenCode agents from tickets while maintaining full compatibility with the official repository.
+Beaver Board extends [KittyClaw](https://github.com/Ekioo/KittyClaw) with **upstream-friendly OpenCode integration**, enabling direct execution of OpenCode agents from tickets while maintaining full compatibility with the official repository.
 
 ## 🎯 Key Features
 
@@ -299,6 +299,6 @@ This project extends KittyClaw and inherits its license. See [LICENSE](LICENSE) 
 
 ---
 
-**KittyClawOpen** - The upstream-friendly OpenCode integration for KittyClaw
+**Beaver Board** - The upstream-friendly OpenCode integration for KittyClaw
 
 *Built with ❤️ for agentic development workflows*

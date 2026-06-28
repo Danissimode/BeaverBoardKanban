@@ -2,9 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
-    <key>CFBundleName</key><string>KittyClawOpen</string>
-    <key>CFBundleDisplayName</key><string>KittyClawOpen</string>
-    <key>CFBundleIdentifier</key><string>com.danissimode.kittyclawopen</string>
+    <key>CFBundleName</key><string>Beaver Board</string>
+    <key>CFBundleDisplayName</key><string>Beaver Board</string>
+    <key>CFBundleIdentifier</key><string>com.danissimode.beaverboard</string>
     <key>CFBundleVersion</key><string>0.1.0</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleExecutable</key><string>KittyClawOpen</string>

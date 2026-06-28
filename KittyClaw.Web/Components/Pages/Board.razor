@@ -17,6 +17,7 @@
 @inject KittyClaw.Web.Services.BoardSortState SortState
 @inject KittyClaw.Web.Services.BoardUpdateNotifier BoardUpdateNotifier
 @inject KittyClaw.Web.Services.AgentRunsState AgentRuns
+@inject KittyClaw.Web.Services.TeamChatState ChatState
 @inject LabelService LabelService
 @inject ColumnService ColumnService
 @inject MemberService MemberService
@@ -215,6 +216,30 @@ else
                                         {
                                             <span class="orch-badge orch-badge--risk-@ticket.RiskLevel.ToLowerInvariant()" title="Risk Level">@ticket.RiskLevel</span>
                                         }
+                                    </div>
+                                }
+                                @* Execution state badges *@
+                                @{
+                                    var ticketActiveRun = AgentRuns.ActiveForTicket(Slug, ticket.Id);
+                                }
+                                @if (ticketActiveRun is not null)
+                                {
+                                    <div class="execution-badges">
+                                        <span class="exec-badge exec-badge--running" title="Run in progress">
+                                            <span class="exec-badge-spinner"></span>running
+                                        </span>
+                                    </div>
+                                }
+                                else if (ticket.Status == "Review")
+                                {
+                                    <div class="execution-badges">
+                                        <span class="exec-badge exec-badge--review" title="Awaiting review">review needed</span>
+                                    </div>
+                                }
+                                else if (ticket.Status == "Blocked")
+                                {
+                                    <div class="execution-badges">
+                                        <span class="exec-badge exec-badge--blocked" title="Execution blocked">blocked</span>
                                     </div>
                                 }
                                 @if (ticket.SubTickets.Count > 0)
@@ -908,6 +933,46 @@ else
             {
                 <div class="drawer-tab-content">
                     <div class="execution-section">
+                        @* Auto-run status banner *@
+                        <div class="autorun-status">
+                            @{
+                                var autoMode = !string.IsNullOrEmpty(_selectedTicket.ExecutionModeOverride)
+                                    ? _selectedTicket.ExecutionModeOverride
+                                    : "Inherited";
+                                var autoEnabled = autoMode != "Manual" && autoMode != "Inherited";
+                            }
+                            <div class="autorun-header">
+                                <span class="autorun-dot @(autoEnabled ? "active" : "inactive")"></span>
+                                <span class="autorun-label">Auto-run @(autoEnabled ? "enabled" : "disabled")</span>
+                                <span class="autorun-mode">@autoMode</span>
+                            </div>
+                            @if (!autoEnabled)
+                            {
+                                <div class="autorun-hint">
+                                    Set Execution Mode to something other than "Manual" to enable auto-run when the card moves to InProgress.
+                                </div>
+                            }
+                            @if (_selectedTicket.RequiresPlan && _selectedTicket.PlanStatus != "approved")
+                            {
+                                <div class="autorun-blocked">
+                                    <span class="autorun-blocked-icon">&#9888;</span>
+                                    <span>Plan must be approved before auto-run will trigger.</span>
+                                </div>
+                            }
+                            @if (_selectedTicket.UseWorktree && _latestRunMeta?.WorktreePath is not null)
+                            {
+                                <div class="autorun-worktree">
+                                    <span class="autorun-wt-icon">&#128194;</span>
+                                    <span>Worktree: <code>@_latestRunMeta.WorktreePath</code></span>
+                                    <button class="copy-path-btn-sm" title="Copy path" @onclick="() => CopyToClipboard(_latestRunMeta.WorktreePath!)">&#128203;</button>
+                                </div>
+                            }
+                            else if (_selectedTicket.UseWorktree)
+                            {
+                                <div class="autorun-hint autorun-hint--dim">Worktree will be created automatically when the card moves to InProgress.</div>
+                            }
+                        </div>
+
                         <label class="field-label">Execution Mode</label>
                         <select class="orch-select" @bind="_selectedTicket.ExecutionModeOverride" @bind:after="UpdateExecutionOverrides">
                             <option value="">Inherit from project</option>
@@ -1012,11 +1077,26 @@ else
                                         <span>@_latestRunMeta.Model</span>
                                     </div>
                                 }
+                                @if (!string.IsNullOrEmpty(_latestRunMeta.Profile))
+                                {
+                                    <div class="run-meta-row">
+                                        <span class="run-meta-label">Profile</span>
+                                        <span>@_latestRunMeta.Profile</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_latestRunMeta.OpenCodeAgent))
+                                {
+                                    <div class="run-meta-row">
+                                        <span class="run-meta-label">Agent</span>
+                                        <span>@_latestRunMeta.OpenCodeAgent</span>
+                                    </div>
+                                }
                                 @if (!string.IsNullOrEmpty(_latestRunMeta.WorktreePath))
                                 {
                                     <div class="run-meta-row">
                                         <span class="run-meta-label">Worktree</span>
-                                        <code class="run-meta-value">@_latestRunMeta.WorktreePath</code>
+                                        <code class="run-meta-value runtree-path">@_latestRunMeta.WorktreePath</code>
+                                        <button class="copy-path-btn" title="Copy path" @onclick="() => CopyToClipboard(_latestRunMeta.WorktreePath!)">&#128203;</button>
                                     </div>
                                 }
                                 @if (!string.IsNullOrEmpty(_latestRunMeta.BranchName))
@@ -1033,9 +1113,23 @@ else
                                         <code class="run-meta-value">@_latestRunMeta.SessionId</code>
                                     </div>
                                 }
-                                @if (!string.IsNullOrEmpty(_latestRunMeta.LastError))
+                                @if (_latestRunMeta.StartedAt != default)
                                 {
                                     <div class="run-meta-row">
+                                        <span class="run-meta-label">Started</span>
+                                        <span>@_latestRunMeta.StartedAt.ToString("g")</span>
+                                    </div>
+                                }
+                                @if (_latestRunMeta.FinishedAt is not null)
+                                {
+                                    <div class="run-meta-row">
+                                        <span class="run-meta-label">Finished</span>
+                                        <span>@_latestRunMeta.FinishedAt.Value.ToString("g")</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_latestRunMeta.LastError))
+                                {
+                                    <div class="run-meta-row run-meta-row--error">
                                         <span class="run-meta-label">Last Error</span>
                                         <span class="error-text">@_latestRunMeta.LastError</span>
                                     </div>
@@ -1047,6 +1141,68 @@ else
                                 @if (_latestRunMeta.Status == AgentRunStatus.Running)
                                 {
                                     <button class="btn-warning" @onclick="StopLatestRun">Stop</button>
+                                }
+                            </div>
+                        }
+
+                        @* ── Latest Failure panel ── *@
+                        @if (_latestFailure is not null && !_latestFailure.Resolved)
+                        {
+                            <div class="failure-panel">
+                                <div class="failure-panel-header">
+                                    <span class="failure-icon">&#9888;</span>
+                                    <span class="failure-title">Execution Blocked</span>
+                                    <span class="failure-kind-badge">@FormatFailureKind(_latestFailure.Kind)</span>
+                                </div>
+                                <div class="failure-message">@_latestFailure.Message</div>
+                                @if (!string.IsNullOrEmpty(_latestFailure.RequiredAction))
+                                {
+                                    <div class="failure-action">
+                                        <strong>What to do:</strong> @_latestFailure.RequiredAction
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_latestFailure.RunId))
+                                {
+                                    <div class="failure-meta">Run: <code>@_latestFailure.RunId</code></div>
+                                }
+                                <div class="failure-time">@_latestFailure.CreatedAt.ToString("g")</div>
+                                <div class="failure-actions">
+                                    <button class="btn-primary" @onclick="ResolveLatestFailure">Mark Resolved</button>
+                                    <button class="btn-secondary" disabled title="Retry run — re-opens the ticket and attempts to run again">Retry</button>
+                                </div>
+                            </div>
+                        }
+
+                        @* ── Failure history ── *@
+                        @if (_failureHistory.Count > 0)
+                        {
+                            <div class="failure-history-section">
+                                <button class="failure-history-toggle" @onclick="() => _failureHistoryOpen = !_failureHistoryOpen">
+                                    <span>Failure History (@_failureHistory.Count)</span>
+                                    <span class="failure-history-chevron @(_failureHistoryOpen ? "open" : "")">&#9660;</span>
+                                </button>
+                                @if (_failureHistoryOpen)
+                                {
+                                    <div class="failure-history-list">
+                                        @foreach (var f in _failureHistory)
+                                        {
+                                            <div class="failure-history-item @(f.Resolved ? "resolved" : "unresolved")">
+                                                <div class="fh-row">
+                                                    <span class="fh-kind">@FormatFailureKind(f.Kind)</span>
+                                                    @if (f.Resolved)
+                                                    {
+                                                        <span class="fh-resolved-badge">Resolved</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="fh-unresolved-badge">Unresolved</span>
+                                                    }
+                                                </div>
+                                                <div class="fh-message">@f.Message</div>
+                                                <div class="fh-time">@f.CreatedAt.ToString("g")</div>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </div>
                         }
@@ -1215,12 +1371,15 @@ else
 
     // Plan / Execution state for the selected ticket
     private TicketExecutionMetadata? _latestRunMeta;
-    private bool _planEditing = false;
-    private string _planDraft = "";
+    private FailureLogEntry? _latestFailure;
+    private List<FailureLogEntry> _failureHistory = [];
     private string _activeDrawerTab = "details"; // details | plan | execution | run
     private bool _isStartingRun = false;
     private string? _opencodeHealth;
-    private List<string> _executionModeOptions = new() { "LegacyClaude", "DirectOpenCode", "CaoGoverned", "TeamWorkflow", "Manual" };
+    private bool _planEditing = false;
+    private string _planDraft = "";
+    private bool _failureHistoryOpen = false;
+    private List<string> _executionModeOptions = new() { "LegacyClaude", "DirectOpenCode", "OpenCodeServer", "CaoGoverned", "TeamWorkflow", "Manual" };
     private List<string> _opencodeAgentOptions = new() { "build", "plan" };
     private List<string> _providerOptions = new() { "openrouter", "anthropic", "openai", "ollama", "litellm", "deepseek", "mistral", "gemini", "qwen" };
     private List<string> _profileOptions = new() { "developer", "planner", "reviewer", "tester", "researcher" };
@@ -1605,6 +1764,7 @@ else
     {
         BoardUpdateNotifier.OnProjectUpdated += OnProjectUpdatedExternal;
         AgentRuns.OnChange += OnAgentRunsChanged;
+        ChatState.CurrentProjectSlug = Slug;
         _project = await ProjectService.GetProjectAsync(Slug);
         if (_project is not null)
         {
@@ -2299,6 +2459,7 @@ else
         // Load latest run metadata + check OpenCode health (fire-and-forget so the UI shows up fast).
         _ = LoadLatestRun();
         _ = CheckOpenCodeHealth();
+        _ = LoadFailures();
 
         if (_subKanbanParentId is not null)
             Navigation.NavigateTo($"/board/{Slug}/sub/{_subKanbanParentId}/ticket/{ticket.Id}", replace: true);
@@ -2312,6 +2473,9 @@ else
         _restoreScrollAfterRender = true;
         _selectedTicket = null;
         _latestRunMeta = null;
+        _latestFailure = null;
+        _failureHistory = [];
+        _failureHistoryOpen = false;
         _planEditing = false;
         _planDraft = "";
         _activeDrawerTab = "details";
@@ -2468,6 +2632,71 @@ else
             _latestRunMeta = null;
         }
     }
+
+    private async Task LoadFailures()
+    {
+        if (_selectedTicket is null) { _latestFailure = null; _failureHistory = []; return; }
+        try
+        {
+            var latestResp = await Http.GetAsync($"api/projects/{Slug}/tickets/{_selectedTicket.Id}/failures/latest");
+            if (latestResp.IsSuccessStatusCode)
+            {
+                _latestFailure = await latestResp.Content.ReadFromJsonAsync<FailureLogEntry>();
+            }
+            else
+            {
+                _latestFailure = null;
+            }
+
+            var historyResp = await Http.GetAsync($"api/projects/{Slug}/tickets/{_selectedTicket.Id}/failures");
+            if (historyResp.IsSuccessStatusCode)
+            {
+                _failureHistory = await historyResp.Content.ReadFromJsonAsync<List<FailureLogEntry>>() ?? [];
+            }
+            else
+            {
+                _failureHistory = [];
+            }
+        }
+        catch
+        {
+            _latestFailure = null;
+            _failureHistory = [];
+        }
+    }
+
+    private async Task ResolveLatestFailure()
+    {
+        if (_latestFailure is null) return;
+        var resp = await Http.PostAsync($"api/projects/{Slug}/failures/{_latestFailure.Id}/resolve", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            _latestFailure = null;
+            await LoadFailures();
+        }
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", text); }
+        catch { /* clipboard unavailable */ }
+    }
+
+    private string FormatFailureKind(string kind) => kind switch
+    {
+        FailureKinds.PlanNotApproved => "Plan Not Approved",
+        FailureKinds.WorktreeCreateFailed => "Worktree Failed",
+        FailureKinds.RunnerUnavailable => "Runner Unavailable",
+        FailureKinds.ProviderNotConfigured => "Provider Not Configured",
+        FailureKinds.ModelNotFound => "Model Not Found",
+        FailureKinds.OpenCodeServerUnavailable => "OpenCode Unavailable",
+        FailureKinds.RunStartFailed => "Run Failed",
+        FailureKinds.PolicyDenied => "Policy Denied",
+        FailureKinds.DuplicateRunBlocked => "Duplicate Blocked",
+        FailureKinds.CaoNotImplemented => "CAO Not Implemented",
+        FailureKinds.TeamWorkflowNotImplemented => "Team Workflow Not Implemented",
+        _ => kind.Replace("-", " ")
+    };
 
     private async Task StartRunForSelected()
     {

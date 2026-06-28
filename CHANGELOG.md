@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to KittyClaw.
+All notable changes to Beaver Board (forked from KittyClaw).
 
 ## [v0.8] — 2026-06-16
 

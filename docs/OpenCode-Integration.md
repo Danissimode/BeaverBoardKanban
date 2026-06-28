@@ -1,10 +1,10 @@
 # OpenCode Integration Guide
 
-This document explains how OpenCode integration works in KittyClawOpen and how to configure and use it.
+This document explains how OpenCode integration works in Beaver Board and how to configure and use it.
 
 ## Overview
 
-KittyClawOpen integrates with OpenCode to provide:
+Beaver Board integrates with OpenCode to provide:
 
 - **Direct OpenCode execution** - Run OpenCode agents directly from tickets
 - **Provider/model selection** - Choose from multiple AI providers and models

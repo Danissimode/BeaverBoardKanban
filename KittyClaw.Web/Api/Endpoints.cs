@@ -1,5 +1,6 @@
 namespace KittyClaw.Web.Api;
 
+using KittyClaw.Core.Automation;
 using KittyClaw.Core.Services;
 using KittyClaw.Web.Services;
 
@@ -20,7 +21,9 @@ public static partial class Endpoints
         MapSkills(api);
         MapAutomations(api);
         MapRuns(api);
+        MapFailureLogbook(api);
         MapChat(api);
+        MapTeamChat(api);
         MapImages(api);
         MapDashboard(api);
 

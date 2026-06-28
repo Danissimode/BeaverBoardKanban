@@ -1,0 +1,13 @@
+{
+  "Branding": {
+    "ProductName": "Beaver Board",
+    "ShortName": "Beaver",
+    "Tagline": "Agentic development board for builders",
+    "Description": "A kanban board that orchestrates agentic projects with LLM agents",
+    "PrimaryColor": "#F97316",
+    "AccentColor": "#F59E0B",
+    "UpstreamName": "KittyClaw",
+    "UpstreamRepo": "https://github.com/Ekioo/KittyClaw",
+    "ForkRepo": "https://github.com/Danissimode/KittyClawOpen"
+  }
+}

@@ -1,0 +1,227 @@
+@using KittyClaw.Core.TeamChat
+@inject ITeamChatService TeamChatService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="team-chat-dock @(IsExpanded ? "expanded" : "collapsed")">
+    @if (!IsExpanded)
+    {
+        <button class="dock-toggle" @onclick="ToggleExpand">
+            <span class="dock-icon">💬</span>
+            <span class="dock-label">Beaver Team Chat</span>
+            @if (UnreadCount > 0)
+            {
+                <span class="dock-badge">@UnreadCount</span>
+            }
+            @if (NeedsHumanCount > 0)
+            {
+                <span class="dock-badge needs-human">@NeedsHumanCount !</span>
+            }
+        </button>
+    }
+    else
+    {
+        <div class="dock-panel">
+            <div class="dock-header">
+                <span class="dock-title">Beaver Team Chat</span>
+                <button class="dock-close" @onclick="ToggleExpand">✕</button>
+            </div>
+
+            <div class="dock-filters">
+                <button class="filter-btn @(ActiveFilter == "all" ? "active" : "")" @onclick='() => SetFilter("all")'>All</button>
+                <button class="filter-btn @(ActiveFilter == "needs-human" ? "active" : "")" @onclick='() => SetFilter("needs-human")'>
+                    Needs Human
+                    @if (NeedsHumanCount > 0)
+                    {
+                        <span class="filter-badge">@NeedsHumanCount</span>
+                    }
+                </button>
+                <button class="filter-btn @(ActiveFilter == "failures" ? "active" : "")" @onclick='() => SetFilter("failures")'>Failures</button>
+                <button class="filter-btn @(ActiveFilter == "mentions" ? "active" : "")" @onclick='() => SetFilter("mentions")'>Mentions</button>
+                <button class="filter-btn @(ActiveFilter == "blockers" ? "active" : "")" @onclick='() => SetFilter("blockers")'>Blockers</button>
+            </div>
+
+            <div class="dock-messages" @ref="MessagesContainer">
+                @if (Messages.Count == 0)
+                {
+                    <div class="empty-state">No messages yet</div>
+                }
+                else
+                {
+                    @foreach (var msg in Messages)
+                    {
+                        <div class="message-card @msg.AuthorType @msg.MessageType priority-@GetPriority(msg)">
+                            <div class="message-header">
+                                @if (msg.AuthorType == "agent")
+                                {
+                                    <span class="message-agent-badge">@GetAgentRole(msg.AuthorId)</span>
+                                }
+                                else if (msg.AuthorType == "system")
+                                {
+                                    <span class="message-system-badge">system</span>
+                                }
+                                <span class="message-author">@msg.AuthorId</span>
+                                <span class="message-type">@msg.MessageType</span>
+                                @if (msg.TicketId.HasValue)
+                                {
+                                    <span class="message-ticket">#@msg.TicketId</span>
+                                }
+                                @if (!string.IsNullOrEmpty(msg.RunId))
+                                {
+                                    <span class="message-run">run</span>
+                                }
+                                <span class="message-time">@msg.CreatedAt.ToString("HH:mm")</span>
+                            </div>
+                            <div class="message-body">@msg.Body</div>
+                            <div class="message-footer">
+                                <span class="delivery-status @msg.DeliveryStatus">@msg.DeliveryStatus</span>
+                                @if (msg.TargetType != "team")
+                                {
+                                    <span class="message-target">@msg.TargetType:@msg.TargetId</span>
+                                }
+                                @if (msg.DeliveryStatus == "open" && msg.MessageType == "question")
+                                {
+                                    <button class="action-btn" @onclick="() => OpenReply(msg)">Reply</button>
+                                }
+                                @if (msg.DeliveryStatus != "resolved")
+                                {
+                                    <button class="action-btn" @onclick="() => ResolveMessage(msg)">Resolve</button>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="dock-composer">
+                <div class="composer-target">
+                    <select @bind="SelectedTarget">
+                        <option value="team">Team</option>
+                        <option value="role:planner">Role: Planner</option>
+                        <option value="role:builder">Role: Builder</option>
+                        <option value="role:reviewer">Role: Reviewer</option>
+                        <option value="role:tester">Role: Tester</option>
+                        <option value="role:producer">Role: Producer</option>
+                        <option value="role:evaluator">Role: Evaluator</option>
+                        <option value="role:committer">Role: Committer</option>
+                        <option value="role:documentalist">Role: Documentalist</option>
+                        <option value="role:code-janitor">Role: Code Janitor</option>
+                    </select>
+                </div>
+                <div class="composer-input">
+                    <input @bind="MessageText" @bind:event="oninput" placeholder="Message team..." @onkeydown="HandleKeyDown" />
+                    <button class="send-btn" @onclick="SendMessage" disabled="@(string.IsNullOrWhiteSpace(MessageText))">Send</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ProjectSlug { get; set; } = "";
+
+    private bool IsExpanded;
+    private string ActiveFilter = "all";
+    private string SelectedTarget = "team";
+    private string MessageText = "";
+    private int UnreadCount;
+    private int NeedsHumanCount;
+    private List<TeamChatMessage> Messages = new();
+    private ElementReference MessagesContainer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMessages();
+    }
+
+    private async Task LoadMessages()
+    {
+        if (string.IsNullOrEmpty(ProjectSlug)) return;
+
+        var query = new TeamChatQuery(Filter: ActiveFilter);
+        Messages = (await TeamChatService.ListMessagesAsync(ProjectSlug, query)).ToList();
+        UnreadCount = await TeamChatService.GetUnreadCountAsync(ProjectSlug);
+        NeedsHumanCount = Messages.Count(m => m.MessageType == "question" && m.DeliveryStatus == "open");
+        StateHasChanged();
+    }
+
+    private async Task SetFilter(string filter)
+    {
+        ActiveFilter = filter;
+        await LoadMessages();
+    }
+
+    private async Task ToggleExpand()
+    {
+        IsExpanded = !IsExpanded;
+        if (IsExpanded)
+            await LoadMessages();
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(MessageText) || string.IsNullOrEmpty(ProjectSlug)) return;
+
+        var targetType = SelectedTarget.StartsWith("role:") ? "role" : SelectedTarget;
+        var targetId = SelectedTarget.StartsWith("role:") ? SelectedTarget.Split(':')[1] : null;
+
+        var req = new PostTeamChatMessageRequest(
+            Body: MessageText,
+            AuthorId: "owner",
+            AuthorType: "human",
+            MessageType: "message",
+            TargetType: targetType,
+            TargetId: targetId
+        );
+
+        await TeamChatService.PostMessageAsync(ProjectSlug, req);
+        MessageText = "";
+        await LoadMessages();
+    }
+
+    private async Task ResolveMessage(TeamChatMessage msg)
+    {
+        await TeamChatService.ResolveMessageAsync(ProjectSlug, msg.Id, "owner");
+        await LoadMessages();
+    }
+
+    private void OpenReply(TeamChatMessage msg)
+    {
+        // TODO: Open reply dialog
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private string GetAgentRole(string agentId)
+    {
+        return agentId switch
+        {
+            "planner" => "📋",
+            "builder" => "🔧",
+            "reviewer" => "👀",
+            "tester" => "🧪",
+            "producer" => "🎯",
+            "evaluator" => "📊",
+            "committer" => "📦",
+            "documentalist" => "📝",
+            "code-janitor" => "🧹",
+            _ => "🤖"
+        };
+    }
+
+    private string GetPriority(TeamChatMessage msg)
+    {
+        if (msg.MessageType == "question" && msg.DeliveryStatus == "open") return "high";
+        if (msg.MessageType == "blocker") return "high";
+        if (msg.MessageType == "failure") return "high";
+        if (msg.MessageType == "status") return "normal";
+        return "low";
+    }
+}
