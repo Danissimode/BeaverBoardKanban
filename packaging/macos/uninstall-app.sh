@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-APP_NAME="KittyClawOpen"
+APP_NAME="BeaverBoard"
 PURGE=false
 
 for arg in "$@"; do
@@ -20,8 +20,8 @@ if [ -d "$HOME/Applications/${APP_NAME}.app" ]; then
 fi
 
 if [ "$PURGE" = true ]; then
-  rm -rf "$HOME/Library/Application Support/KittyClawOpen"
-  rm -rf "$HOME/Library/Logs/KittyClawOpen"
+  rm -rf "$HOME/Library/Application Support/BeaverBoard"
+  rm -rf "$HOME/Library/Logs/BeaverBoard"
   echo "Purged user data and logs"
 fi
 

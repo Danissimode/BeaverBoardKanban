@@ -1,6 +1,24 @@
 # Changelog
 
-All notable changes to Beaver Board (forked from KittyClaw).
+All notable changes to Beaver Board Kanban (forked from KittyClaw).
+
+## [v0.9] — 2026-06-28
+
+GitHub repository rebranding and documentation overhaul.
+
+### Changed
+
+- **README.md fully rewritten** with Beaver Board Kanban branding, new project positioning, and developer-focused documentation.
+- **Removed KittyClaw branding files** from `branding/` directory (4 PNG files).
+- **Removed KittyClaw webp files** from `KittyClaw.Web/wwwroot/` (4 files).
+- **Added `BeaverBoard-Logo.webp`** generated from raw icon asset.
+- **Updated dashboard alt text** from "KittyClaw dashboard" to "Beaver Board Kanban dashboard".
+- **Updated onboarding text** from "KittyClaw" to "Beaver Board".
+- **Added project roadmap** with 5 phases covering branding, UX, chat, OpenCode integration, and agent orchestration.
+- **Added OpenCode integration section** documenting the planned OpenCode-first direction.
+- **Added attribution section** crediting KittyClaw as the upstream fork source.
+
+---
 
 ## [v0.8] — 2026-06-16
 

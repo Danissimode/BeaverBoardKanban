@@ -1,0 +1,513 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beaver Board - README Assets</title>
+  <style>
+    :root {
+      --bg-base: #09090B;
+      --bg-surface: #111113;
+      --bg-raised: #18181B;
+      --fg-primary: #FAFAFA;
+      --fg-secondary: #A1A1AA;
+      --fg-muted: #71717A;
+      
+      --border-subtle: #27272A;
+      --border-strong: #3F3F46;
+      
+      --brand-orange: #F97316;
+      --brand-amber: #F59E0B;
+      
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #000;
+      color: var(--fg-primary);
+      font-family: var(--font-sans);
+      padding: 3rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .instructions {
+      max-width: 800px;
+      margin: 0 auto 3rem;
+      text-align: center;
+      font-family: var(--font-mono);
+      color: var(--fg-secondary);
+      font-size: 0.9rem;
+    }
+
+    .instructions span {
+      color: var(--brand-orange);
+    }
+
+    /* Asset Container Wrapper */
+    .asset-wrapper {
+      margin: 0 auto 5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .asset-label {
+      font-family: var(--font-mono);
+      color: var(--fg-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* -----------------------------------------
+       ASSET 1: HERO COVER (1280 x 640)
+       ----------------------------------------- */
+    .banner-hero {
+      width: 1000px;
+      height: 500px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4rem;
+    }
+
+    .banner-hero::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      background: var(--brand-orange);
+      filter: blur(150px);
+      opacity: 0.15;
+      border-radius: 50%;
+      z-index: 0;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 600px;
+    }
+
+    .hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-brand svg {
+      width: 32px;
+      height: 32px;
+      color: var(--brand-orange);
+    }
+
+    .banner-hero h1 {
+      font-size: 3.2rem;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+
+    .banner-hero h1 span {
+      color: var(--brand-orange);
+    }
+
+    .banner-hero p {
+      font-size: 1.2rem;
+      color: var(--fg-secondary);
+      line-height: 1.5;
+    }
+
+    /* Mini Mockup floating on the right */
+    .hero-floating-mockup {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 480px;
+      height: 380px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      box-shadow: -20px 20px 60px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+    }
+
+    .mac-header {
+      height: 32px;
+      background: var(--bg-raised);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 6px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); }
+    
+    .mockup-inner {
+      display: flex;
+      flex: 1;
+    }
+
+    .mockup-board {
+      flex: 1;
+      border-right: 1px solid var(--border-subtle);
+      padding: 12px;
+    }
+    
+    .mockup-chat {
+      flex: 1.2;
+      background: var(--bg-base);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .m-card {
+      background: var(--bg-raised);
+      border: 1px solid var(--brand-orange);
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 4px 12px rgba(249,115,22,0.1);
+    }
+    
+    .m-card-id { font-family: var(--font-mono); font-size: 10px; color: var(--fg-secondary); margin-bottom: 4px; display: block; }
+    .m-card-title { font-size: 12px; font-weight: 500; }
+
+    .m-msg { font-size: 11px; line-height: 1.4; }
+    .m-msg-auth { font-family: var(--font-mono); font-size: 9px; margin-bottom: 2px; }
+    .m-msg-auth.dev { color: var(--fg-primary); }
+    .m-msg-auth.agent { color: var(--brand-amber); }
+    .m-msg-body { color: var(--fg-secondary); }
+
+    /* -----------------------------------------
+       ASSET 2: OPENCODE DIAGRAM (1000 x 400)
+       ----------------------------------------- */
+    .banner-diagram {
+      width: 1000px;
+      height: 450px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .diagram-title {
+      position: absolute;
+      top: 30px;
+      left: 40px;
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    
+    .diagram-title span {
+      font-family: var(--font-mono);
+      color: var(--brand-orange);
+      font-size: 0.9rem;
+      display: block;
+      margin-top: 4px;
+    }
+
+    .flow-container {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .node {
+      background: var(--bg-raised);
+      border: 1px solid var(--border-strong);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .node.active {
+      border-color: var(--brand-orange);
+      background: rgba(249, 115, 22, 0.05);
+    }
+    
+    .node-icon { margin-bottom: 0.5rem; color: var(--brand-orange); }
+    .node-label { font-family: var(--font-mono); font-size: 0.85rem; color: var(--fg-primary); }
+    .node-sub { font-size: 0.75rem; color: var(--fg-secondary); margin-top: 4px; }
+
+    .arrow {
+      color: var(--border-strong);
+      font-size: 24px;
+    }
+
+    /* -----------------------------------------
+       ASSET 3: UI CLOSE-UP (800 x 500)
+       ----------------------------------------- */
+    .banner-ui {
+      width: 800px;
+      height: 500px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 40px;
+      display: flex;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .detailed-card {
+      flex: 1;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    }
+
+    .dc-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .dc-tag { font-family: var(--font-mono); font-size: 12px; color: var(--brand-orange); background: rgba(249,115,22,0.1); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; }
+    .dc-title { font-size: 20px; font-weight: 500; margin-bottom: 16px; }
+    .dc-grid { display: grid; grid-template-columns: 100px 1fr; gap: 8px; font-family: var(--font-mono); font-size: 12px; }
+    .dc-grid span:nth-child(odd) { color: var(--fg-muted); }
+    .dc-grid span:nth-child(even) { color: var(--fg-primary); }
+
+    .dc-chat-area {
+      flex: 1;
+      padding: 20px;
+      background: var(--bg-raised);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .c-msg { font-size: 13px; }
+    .c-author { font-family: var(--font-mono); font-size: 11px; margin-bottom: 4px; display: flex; justify-content: space-between;}
+    .c-author.agent { color: var(--brand-amber); }
+    .c-author.dev { color: var(--brand-orange); }
+    .c-body { color: var(--fg-secondary); line-height: 1.5; background: var(--bg-base); padding: 10px; border-radius: 6px; border: 1px solid var(--border-strong); }
+    
+    .dc-action {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--brand-orange);
+      border-left: 2px solid var(--brand-orange);
+      padding-left: 12px;
+      margin-top: auto;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- THE BEAVER BOARD SVG ICON -->
+  <svg width="0" height="0" style="display: none;">
+    <defs>
+      <g id="beaver-icon" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        
+        <!-- Beaver Ears -->
+        <path d="M6.5 7 A 2 2 0 1 1 9.5 4.5" />
+        <path d="M14.5 4.5 A 2 2 0 1 1 17.5 7" />
+
+        <!-- Beaver Head (peeking over the board) -->
+        <path d="M17.5 14 C17.5 8 15 4.5 12 4.5 C9 4.5 6.5 8 6.5 14" />
+
+        <!-- Eyes -->
+        <circle cx="9.5" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
+        <circle cx="14.5" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
+
+        <!-- Nose -->
+        <path d="M10.5 12 h3 l-1.5 2 z" fill="currentColor" stroke="none" />
+
+        <!-- Tiny Paws resting on the board -->
+        <path d="M5.5 14 v-1.5 a1.5 1.5 0 0 1 3 0 v1.5" />
+        <path d="M15.5 14 v-1.5 a1.5 1.5 0 0 1 3 0 v1.5" />
+
+        <!-- The Kanban Board (His "Dam") -->
+        <rect x="2" y="14" width="20" height="8" rx="1.5" fill="var(--bg-base)" />
+        <path d="M8.5 14 v8 M15.5 14 v8" /> <!-- Column dividers -->
+
+        <!-- Kanban Cards on the board -->
+        <rect x="4" y="16.5" width="3" height="3.5" rx="0.5" fill="currentColor" stroke="none" />
+        <rect x="10" y="16" width="4" height="2" rx="0.5" fill="currentColor" stroke="none" />
+        <rect x="10" y="19" width="4" height="1.5" rx="0.5" fill="currentColor" stroke="none" />
+        <rect x="17" y="17.5" width="3" height="2" rx="0.5" fill="var(--brand-orange)" stroke="none" />
+
+        <!-- AI Sparkle / Star (AI Agents logic) -->
+        <path d="M20 1 Q20 3.5 22.5 3.5 Q20 3.5 20 6 Q20 3.5 17.5 3.5 Q20 3.5 20 1 Z" fill="var(--brand-orange)" stroke="none" />
+      
+      </g>
+    </defs>
+  </svg>
+
+  <div class="instructions">
+    Розгорніть це вікно на максимум. Використайте інструмент створення скріншотів (Cmd+Shift+4 на Mac або Win+Shift+S на Windows), щоб вирізати кожен блок. <span>Ці блоки мають ідеальний розмір для вставки у README.md.</span>
+  </div>
+
+  <!-- ASSET 1 -->
+  <div class="asset-wrapper">
+    <div class="asset-label">Asset 1: Hero Banner (1000x500)</div>
+    <div class="banner-hero">
+      <div class="hero-content">
+        <div class="hero-brand">
+          <svg viewBox="0 0 24 24"><use href="#beaver-icon"></use></svg>
+          Beaver Board Kanban
+        </div>
+        <h1>Run your AI team from <span>one board.</span></h1>
+        <p>A Kanban board where your AI agents become your development team. Connect task cards to OpenCode sessions and shared command chat.</p>
+      </div>
+
+      <!-- Mockup Layer -->
+      <div class="hero-floating-mockup">
+        <div class="mac-header">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="mockup-inner">
+          <div class="mockup-board">
+            <div style="font-family: var(--font-mono); font-size: 9px; color: var(--fg-muted); margin-bottom: 10px;">IN PROGRESS</div>
+            <div class="m-card">
+              <span class="m-card-id">BB-102</span>
+              <div class="m-card-title">Refactor Auth Layer</div>
+            </div>
+          </div>
+          <div class="mockup-chat">
+             <div class="m-msg">
+               <div class="m-msg-auth dev">Developer</div>
+               <div class="m-msg-body">@Agent-Roo fix the JWT bug on BB-102.</div>
+             </div>
+             <div class="m-msg">
+               <div class="m-msg-auth agent">Agent-Roo</div>
+               <div class="m-msg-body">I've assigned BB-102 and started an OpenCode session. Tests are running.</div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASSET 2 -->
+  <div class="asset-wrapper">
+    <div class="asset-label">Asset 2: Architecture Flow (1000x450)</div>
+    <div class="banner-diagram">
+      <div class="diagram-title">
+        OpenCode Integration
+        <span>Two-way execution flow</span>
+      </div>
+      
+      <div class="flow-container">
+        <!-- Node 1 -->
+        <div class="node active">
+          <div class="node-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24"><use href="#beaver-icon"></use></svg>
+          </div>
+          <div class="node-label">Kanban Card</div>
+          <div class="node-sub">Context & Scope</div>
+        </div>
+        
+        <div class="arrow">→</div>
+
+        <!-- Node 2 -->
+        <div class="node">
+          <div class="node-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+          </div>
+          <div class="node-label">AI Agent</div>
+          <div class="node-sub">Shared Command Chat</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <!-- Node 3 -->
+        <div class="node active">
+          <div class="node-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+          </div>
+          <div class="node-label">OpenCode</div>
+          <div class="node-sub">Execution Layer</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <!-- Node 4 -->
+        <div class="node">
+          <div class="node-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
+          <div class="node-label">Repository</div>
+          <div class="node-sub">Tests & PR</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASSET 3 -->
+  <div class="asset-wrapper">
+    <div class="asset-label">Asset 3: Details & UI (800x500)</div>
+    <div class="banner-ui">
+      
+      <div class="detailed-card">
+        <div class="dc-header">
+          <div class="dc-tag">BB-102</div>
+          <div class="dc-title">Refactor Auth API</div>
+          <div class="dc-grid">
+            <span>Agent:</span> <span>Agent-Roo</span>
+            <span>Executor:</span> <span>OpenCode</span>
+            <span>Status:</span> <span style="color: var(--brand-orange)">In Progress</span>
+            <span>Branch:</span> <span>refactor/auth</span>
+          </div>
+        </div>
+        
+        <div class="dc-chat-area">
+          <div class="c-msg">
+            <div class="c-author agent">Agent-Roo <span>10:22 AM</span></div>
+            <div class="c-body">I found deprecated JWT calls. Should I replace them with TokenService? This might affect 4 test files.</div>
+          </div>
+          <div class="c-msg">
+            <div class="c-author dev">Developer <span>10:25 AM</span></div>
+            <div class="c-body">Approved. Keep compatibility with existing tests.</div>
+          </div>
+          <div class="dc-action">
+            ↳ Agent-Roo updated status to "Review"
+          </div>
+        </div>
+      </div>
+
+      <div style="flex: 0.6; display: flex; flex-direction: column; justify-content: center; gap: 20px;">
+        <h3 style="font-size: 1.8rem; line-height: 1.2;">Everything in context.</h3>
+        <p style="color: var(--fg-secondary); font-size: 1rem; line-height: 1.6;">
+          Tasks, code changes, and AI conversations are linked in a single view. No more scattered logs or disjointed terminals.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

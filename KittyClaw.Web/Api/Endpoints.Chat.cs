@@ -134,7 +134,7 @@ public static partial class Endpoints
                 var sb = new StringBuilder();
                 sb.AppendLine("# Context");
                 sb.AppendLine();
-                sb.AppendLine("You are an AI assistant embedded in the **KittyClaw** application — a Blazor Server kanban board that orchestrates agentic Claude workflows.");
+                sb.AppendLine("You are an AI assistant embedded in the **Beaver Board Kanban** application — a Blazor Server kanban board that orchestrates agentic Claude workflows.");
                 sb.AppendLine($"The owner is currently viewing the project **{project.Name}** (slug: `{slug}`).");
                 sb.AppendLine($"Project workspace: `{workspacePath}`");
                 sb.AppendLine();
@@ -151,7 +151,7 @@ public static partial class Endpoints
                 }
 
                 var baseUrl = $"{http.Request.Scheme}://{http.Request.Host}";
-                sb.AppendLine("## KittyClaw App API");
+                sb.AppendLine("## Beaver Board App API");
                 sb.AppendLine();
                 sb.AppendLine($"Base URL: `{baseUrl}`");
                 sb.AppendLine($"Current project slug: `{slug}`");

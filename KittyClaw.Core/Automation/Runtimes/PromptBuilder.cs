@@ -5,7 +5,7 @@ public sealed class PromptBuilder : IAgentPromptBuilder
     public string BuildPrompt(AgentRunRequest request)
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("# KittyClawOpen Agent Task");
+        sb.AppendLine("# Beaver Board Agent Task");
         sb.AppendLine($"Project: {request.ProjectSlug}");
         sb.AppendLine($"Workspace: {request.WorkspacePath}");
         sb.AppendLine($"Ticket: #{request.TicketId}");

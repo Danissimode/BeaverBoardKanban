@@ -1,0 +1,68 @@
+<svg width="800" height="500" viewBox="0 0 800 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="500" fill="#09090B"/>
+
+  <!-- Left side: Ticket Card -->
+  <rect x="24" y="24" width="350" height="452" rx="12" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+  <text x="40" y="52" font-family="Inter, sans-serif" font-size="12" font-weight="500" fill="#9CA3AF">BB-102</text>
+  <text x="40" y="76" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#FFFFFF">Refactor Auth API</text>
+
+  <!-- Metadata -->
+  <g transform="translate(40, 100)">
+    <g transform="translate(0, 0)">
+      <text font-family="Inter, sans-serif" font-size="12" fill="#9CA3AF">Agent:</text>
+      <text x="60" font-family="Inter, sans-serif" font-size="12" fill="#F97316">Agent-Roo</text>
+    </g>
+    <g transform="translate(0, 24)">
+      <text font-family="Inter, sans-serif" font-size="12" fill="#9CA3AF">Executor:</text>
+      <text x="70" font-family="Inter, sans-serif" font-size="12" fill="#FFFFFF">OpenCode</text>
+    </g>
+    <g transform="translate(0, 48)">
+      <text font-family="Inter, sans-serif" font-size="12" fill="#9CA3AF">Status:</text>
+      <text x="50" font-family="Inter, sans-serif" font-size="12" fill="#F97316">In Progress</text>
+    </g>
+    <g transform="translate(0, 72)">
+      <text font-family="Inter, sans-serif" font-size="12" fill="#9CA3AF">Branch:</text>
+      <text x="60" font-family="Inter, sans-serif" font-size="12" fill="#FFFFFF">refactor/auth</text>
+    </g>
+  </g>
+
+  <!-- Chat -->
+  <rect x="40" y="200" width="318" height="240" rx="8" fill="#09090B" stroke="#27272A" stroke-width="1"/>
+  <g transform="translate(52, 220)">
+    <g transform="translate(0, 0)">
+      <text font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#F97316">Developer:</text>
+      <text x="80" font-family="Inter, sans-serif" font-size="12" fill="#FFFFFF">@Agent-Roo fix the JWT bug on BB-102.</text>
+    </g>
+    <g transform="translate(0, 24)">
+      <text font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#3B82F6">Agent-Roo:</text>
+      <text x="80" font-family="Inter, sans-serif" font-size="12" fill="#FFFFFF">I've assigned BB-102 and started an OpenCode session. Tests running.</text>
+    </g>
+    <g transform="translate(0, 48)">
+      <text font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#3B82F6">Agent-Roo:</text>
+      <text x="80" font-family="Inter, sans-serif" font-size="12" fill="#FFFFFF">I found deprecated JWT calls. Should I replace them with TokenService?</text>
+    </g>
+    <g transform="translate(0, 72)">
+      <text font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#F97316">Developer:</text>
+      <text x="80" font-family="Inter, sans-serif" font-size="12" fill="#FFFFFF">Approved. Keep compatibility with tests.</text>
+    </g>
+    <g transform="translate(0, 96)">
+      <text font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#10B981">System:</text>
+      <text x="60" font-family="Inter, sans-serif" font-size="12" fill="#9CA3AF">↳ Agent-Roo updated status to 'Review'</text>
+    </g>
+  </g>
+
+  <!-- Right side: Descriptive text -->
+  <g transform="translate(400, 40)">
+    <text font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#FFFFFF">Everything in context.</text>
+    <text y="48" font-family="Inter, sans-serif" font-size="14" fill="#9CA3AF" line-height="1.5" width="350">Tasks, code changes, and AI conversations are linked in a single view. No more scattered logs or disjointed terminals.</text>
+  </g>
+
+  <!-- Glow effect -->
+  <rect x="24" y="24" width="350" height="452" rx="12" fill="#F97316" opacity="0.1" filter="url(#glow)"/>
+  <defs>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+</svg>

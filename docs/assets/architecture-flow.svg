@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1000" height="450" viewBox="0 0 1000 450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .node { fill: #1A1A1A; stroke: #F97316; stroke-width: 1; }
+      .icon { fill: #F97316; }
+      .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; fill: #FFFFFF; }
+      .sub-label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; fill: #A1A1AA; }
+      .caption { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; fill: #A1A1AA; }
+      .arrow { stroke: #F97316; stroke-width: 4; }
+      .arrow-back { stroke: #4B5563; stroke-width: 4; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="450" fill="#09090B"/>
+
+  <!-- Kanban Card Node -->
+  <rect x="80" y="125" width="180" height="200" rx="12" class="node"/>
+  <rect x="126" y="165" width="48" height="48" rx="8" class="icon"/>
+  <text x="170" y="235" text-anchor="middle" class="label" font-size="16" font-weight="600">Kanban Card</text>
+  <text x="170" y="255" text-anchor="middle" class="sub-label" font-size="12">Context & Scope</text>
+
+  <!-- AI Agent Node -->
+  <rect x="300" y="125" width="180" height="200" rx="12" class="node"/>
+  <circle cx="390" cy="189" r="24" class="icon"/>
+  <text x="390" y="235" text-anchor="middle" class="label" font-size="16" font-weight="600">AI Agent</text>
+  <text x="390" y="255" text-anchor="middle" class="sub-label" font-size="12">Shared Command Chat</text>
+
+  <!-- OpenCode Node -->
+  <rect x="520" y="125" width="180" height="200" rx="12" class="node"/>
+  <rect x="566" y="165" width="48" height="48" rx="4" class="icon"/>
+  <text x="610" y="235" text-anchor="middle" class="label" font-size="16" font-weight="600">OpenCode</text>
+  <text x="610" y="255" text-anchor="middle" class="sub-label" font-size="12">Execution Layer</text>
+
+  <!-- Repository Node -->
+  <rect x="740" y="125" width="180" height="200" rx="12" class="node"/>
+  <rect x="786" y="165" width="48" height="48" rx="4" class="icon"/>
+  <text x="830" y="235" text-anchor="middle" class="label" font-size="16" font-weight="600">Repository</text>
+  <text x="830" y="255" text-anchor="middle" class="sub-label" font-size="12">Tests & PR</text>
+
+  <!-- Arrows (Left to Right) -->
+  <line x1="260" y1="225" x2="300" y2="225" class="arrow" marker-end="url(#arrowhead)"/>
+  <line x1="480" y1="225" x2="520" y2="225" class="arrow" marker-end="url(#arrowhead)"/>
+  <line x1="700" y1="225" x2="740" y2="225" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <!-- Arrows (Right to Left) -->
+  <line x1="300" y1="245" x2="260" y2="245" class="arrow-back" marker-end="url(#arrowhead-back)"/>
+  <line x1="520" y1="245" x2="480" y2="245" class="arrow-back" marker-end="url(#arrowhead-back)"/>
+  <line x1="740" y1="245" x2="700" y2="245" class="arrow-back" marker-end="url(#arrowhead-back)"/>
+
+  <!-- Arrowheads -->
+  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#F97316"/>
+  </marker>
+  <marker id="arrowhead-back" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto">
+    <polygon points="10 0, 0 3.5, 10 7" fill="#4B5563"/>
+  </marker>
+
+  <!-- Caption -->
+  <text x="500" y="420" text-anchor="middle" class="caption" font-size="14">Task cards connect to AI agents, which execute through OpenCode and commit to your repository.</text>
+</svg>

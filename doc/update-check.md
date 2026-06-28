@@ -1,7 +1,7 @@
 # Update check
 
 ## Purpose
-Detects when a newer KittyClaw release is published on GitHub and surfaces a dismissible banner above the app shell so the user knows an update is available.
+Detects when a newer Beaver Board release is published on GitHub and surfaces a dismissible banner above the app shell so the user knows an update is available.
 
 ## Key components
 - `KittyClaw.Web/Services/UpdateCheckService.cs` — hosted `BackgroundService` that polls the GitHub Releases API (`/repos/Ekioo/KittyClaw/releases/latest`) at most once every 24h, caches the latest tag in memory, and exposes `CurrentVersion`, `LatestVersion`, `HasUpdate`, and an `OnChange` event. Also offers `Dismiss()`, `SimulateUpdate(version)`, and `ResetSimulation()`.

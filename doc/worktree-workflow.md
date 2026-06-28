@@ -2,7 +2,7 @@
 
 ## Status
 
-**Opt-in pattern.** The helper scripts and the automation placeholder shipped here exist so a project *can* adopt per-ticket worktrees, but `ProjectTemplate/Agents/**` does **not** enable it by default. A freshly initialized KittyClaw project keeps all agents working in the single project workspace.
+**Opt-in pattern.** The helper scripts and the automation placeholder shipped here exist so a project *can* adopt per-ticket worktrees, but `ProjectTemplate/Agents/**` does **not** enable it by default. A freshly initialized Beaver Board project keeps all agents working in the single project workspace.
 
 Adopt this pattern only if you need filesystem isolation between concurrent agentic work on different tickets (e.g. several programmers in flight simultaneously, or a desire to keep `main` clean while work is in progress).
 

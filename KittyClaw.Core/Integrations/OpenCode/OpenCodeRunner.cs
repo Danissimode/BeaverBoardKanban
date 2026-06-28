@@ -301,6 +301,8 @@ public sealed class OpenCodeRunner : IAgentRunner
     {
         var arguments = new List<string>();
         
+        if (_config.CommandTemplate is null) return arguments;
+        
         foreach (var argTemplate in _config.CommandTemplate)
         {
             var arg = argTemplate

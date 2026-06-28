@@ -18,7 +18,8 @@ api.MapPost("/projects/{slug}/tickets", async (string slug, CreateTicketRequest 
             try
             {
                 var ticket = await ts.CreateTicketAsync(slug, req.Title, req.Description, req.CreatedBy, req.Status, req.LabelIds, req.Priority, req.AssignedTo, req.ParentId, req.CliRuntimeId, req.CaoRoleId, req.ModelProfileId, req.RiskLevel, req.Reviewer, req.RequiredEvidence, req.ExecutionModeOverride, req.OpenCodeAgent, req.ProviderOverride, req.ModelOverride, req.ProfileOverride, req.UseWorktree, req.ForbiddenPaths);
-                if (ticket is not null) notifier.NotifyProjectUpdated(slug);
+                if (ticket is null) return Results.BadRequest(new { error = "Failed to create ticket" });
+                notifier.NotifyProjectUpdated(slug);
                 return Results.Created($"/api/projects/{slug}/tickets/{ticket.Id}", ticket);
             }
             catch (InvalidOperationException ex)

@@ -1,6 +1,6 @@
 # Graphic charter
 
-Single source of truth for KittyClaw's visual language. When adding new UI, reuse
+Single source of truth for Beaver Board's visual language. When adding new UI, reuse
 existing CSS variables and component patterns rather than introducing one-off colors,
 radii, or font sizes.
 

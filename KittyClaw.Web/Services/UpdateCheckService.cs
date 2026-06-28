@@ -52,7 +52,7 @@ public class UpdateCheckService : BackgroundService
         try
         {
             var client = _httpFactory.CreateClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("KittyClaw-UpdateCheck");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("BeaverBoard-UpdateCheck");
             var resp = await client.GetFromJsonAsync<GitHubRelease>(
                 "https://api.github.com/repos/Ekioo/KittyClaw/releases/latest", ct);
             if (resp is not null && !string.IsNullOrWhiteSpace(resp.TagName))

@@ -1,13 +1,13 @@
 {
   "Branding": {
-    "ProductName": "Beaver Board",
-    "ShortName": "Beaver",
-    "Tagline": "Agentic development board for builders",
-    "Description": "A kanban board that orchestrates agentic projects with LLM agents",
+    "ProductName": "Beaver Board Kanban",
+    "ShortName": "Beaver Board",
+    "Tagline": "A Kanban board where AI agents become your development team",
+    "Description": "Kanban orchestrator for solo developers working with AI agents. Connect task cards, shared command chat, OpenCode sessions, blockers, approvals, and evidence in one developer workflow.",
     "PrimaryColor": "#F97316",
     "AccentColor": "#F59E0B",
     "UpstreamName": "KittyClaw",
     "UpstreamRepo": "https://github.com/Ekioo/KittyClaw",
-    "ForkRepo": "https://github.com/Danissimode/KittyClawOpen"
+    "ForkRepo": "https://github.com/Danissimode/BeaverBoardKanban"
   }
 }

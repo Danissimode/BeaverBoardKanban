@@ -9,7 +9,7 @@ ChatGPT / Jules / Codex
   ↓ MCP stdio
 BeaverBoardKanban-mcp
   ↓ REST API (localhost:5230)
-Beaver Board / KittyClawOpen
+Beaver Board Kanban
   ↓ tickets / runs / team chat
 Agents / OpenCode / worktrees
   ↓

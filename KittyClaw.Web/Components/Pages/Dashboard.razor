@@ -1,4 +1,4 @@
-﻿@page "/board/{Slug}/dashboard"
+@page "/board/{Slug}/dashboard"
 @using System.Text
 @using System.Text.Json
 @using System.Text.RegularExpressions
@@ -478,7 +478,7 @@ else
         var rows = string.Join('\n', TileTemplate.All.Select(t =>
             $"        - {t.PadRight(maxLen)} → {TileTemplate.Description(t)}"));
         return $$"""
-            You are a dashboard tile creation assistant for KittyClaw.
+            You are a dashboard tile creation assistant for Beaver Board.
 
             A dashboard tile is a result file in .dashboard/ paired with a YAML sidecar `<file>.yaml`
             that describes how to render it and (optionally) how it is refreshed on a schedule.

@@ -879,10 +879,14 @@ else
                     <div class="plan-section">
                         <div class="plan-status-row">
                             <label class="field-label">Status</label>
-                            <span class="plan-badge plan-@_selectedTicket.PlanStatus">@_selectedTicket.PlanStatus</span>
-                            @if (_selectedTicket.PlanApprovedBy is not null)
+                            @{
+                                var planStatus = _selectedTicket.PlanStatus ?? "none";
+                                var planApprovedBy = _selectedTicket.PlanApprovedBy;
+                            }
+                            <span class="plan-badge plan-@planStatus">@planStatus</span>
+                            @if (planApprovedBy is not null)
                             {
-                                <span class="plan-approver">approved by @_selectedTicket.PlanApprovedBy</span>
+                                <span class="plan-approver">approved by @planApprovedBy</span>
                             }
                         </div>
 
@@ -936,8 +940,9 @@ else
                         @* Auto-run status banner *@
                         <div class="autorun-status">
                             @{
-                                var autoMode = !string.IsNullOrEmpty(_selectedTicket.ExecutionModeOverride)
-                                    ? _selectedTicket.ExecutionModeOverride
+                                var execMode = _selectedTicket.ExecutionModeOverride ?? "";
+                                var autoMode = !string.IsNullOrEmpty(execMode)
+                                    ? execMode
                                     : "Inherited";
                                 var autoEnabled = autoMode != "Manual" && autoMode != "Inherited";
                             }

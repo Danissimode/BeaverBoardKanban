@@ -18,7 +18,7 @@ Beaver Board integrates with OpenCode to provide:
 The integration follows an **upstream-friendly plugin architecture**:
 
 ```
-KittyClaw UI
+Beaver Board UI
   ↓
 Ticket / Card Execution Panel
   ↓
@@ -32,7 +32,7 @@ WorktreeService
   ↓
 OpenCode session / CLI / server
   ↓
-Run stream → KittyClaw run drawer
+Run stream → Beaver Board run drawer
   ↓
 Ticket metadata / comments / activity
 ```
@@ -522,7 +522,7 @@ By default, arbitrary shell execution is disabled:
 
 ### Secrets Management
 
-**Do NOT store provider API keys in KittyClaw database.**
+**Do NOT store provider API keys in Beaver Board database.**
 
 Instead, use:
 
@@ -592,7 +592,7 @@ OpenCode supports MCP (Model Context Protocol) servers:
 - **MCP enabled**: yes/no (inherited from OpenCode config)
 - **MCP profile**: inherited from OpenCode
 
-KittyClaw doesn't manage MCP directly - it passes through OpenCode's MCP environment/config.
+Beaver Board doesn't manage MCP directly - it passes through OpenCode's MCP environment/config.
 
 ## Tool Permissions
 
@@ -609,7 +609,7 @@ Mapping to OpenCode agents/config happens in adapter config.
 
 ## Session Steering
 
-KittyClaw's steer/stop UI works with OpenCode:
+Beaver Board's steer/stop UI works with OpenCode:
 
 - **Server mode**: Steering sent to OpenCode server API
 - **CLI mode**: Steering creates follow-up run/comment (not real-time)
