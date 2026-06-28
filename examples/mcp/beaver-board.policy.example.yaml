@@ -1,0 +1,120 @@
+# Beaver Board MCP Control Plane Policy
+# Copy to ~/.config/beaver-board-mcp/policy.yaml
+
+server:
+  transport: "stdio"
+
+beaver:
+  base_url: "http://localhost:5230"
+  author: "chatgpt"
+  allowed_projects:
+    - "petpals"
+    - "petpalscursor"
+
+# Legacy compatibility (deprecated, use beaver.*)
+kittyclaw:
+  base_url: "http://localhost:5230"
+  author: "chatgpt"
+  allowed_projects:
+    - "petpals"
+    - "petpalscursor"
+
+workflow:
+  statuses:
+    backlog: "Backlog"
+    todo: "Todo"
+    in_progress: "InProgress"
+    review: "Review"
+    verified: "Verified"
+    done: "Done"
+    blocked: "Blocked"
+  allowed_transitions:
+    chatgpt:
+      - from: "Backlog"
+        to: "Todo"
+      - from: "Todo"
+        to: "Ready"
+      - from: "Review"
+        to: "Verified"
+    agent:
+      - from: "Ready"
+        to: "InProgress"
+      - from: "InProgress"
+        to: "Review"
+      - from: "InProgress"
+        to: "Blocked"
+    owner_only:
+      - from: "Verified"
+        to: "Done"
+      - from: "Blocked"
+        to: "InProgress"
+  done_requires_owner: true
+  verified_requires_completion_review: true
+
+tools:
+  allow:
+    - "beaver.projects.list"
+    - "beaver.board.summary"
+    - "beaver.ticket.get"
+    - "beaver.ticket.create"
+    - "beaver.ticket.add_comment"
+    - "beaver.ticket.set_plan"
+    - "beaver.ticket.approve_plan"
+    - "beaver.ticket.set_execution"
+    - "beaver.ticket.move_status"
+    - "beaver.runs.latest"
+    - "beaver.failures.list"
+    - "beaver.team_chat.post"
+    - "beaver.team_chat.inbox"
+    - "beaver.team_chat.reply"
+    - "audit.recent"
+  require_confirmation:
+    - "beaver.ticket.move_status"
+    - "beaver.ticket.approve_plan"
+    - "beaver.ticket.set_execution"
+    - "beaver.failures.resolve"
+  deny:
+    - "run_shell_command"
+    - "git_commit"
+    - "git_push"
+    - "edit_repo_files"
+    - "apply_patch"
+    - "execute_agent_directly"
+    - "generic_http_request"
+    - "raw_openapi_call"
+
+risk:
+  high_risk_labels:
+    - "security"
+    - "rls"
+    - "payments"
+    - "auth"
+    - "database"
+  done_for_high_risk_requires_owner: true
+  verified_for_high_risk_requires_reviewer: true
+
+execution_policy:
+  mcp_can_start_runs: true
+  mcp_start_run_means_move_to_in_progress: true
+  mcp_cannot_directly_execute_runners: true
+  direct_opencode_allowed_risk:
+    - "low"
+  high_risk_requires_owner:
+    - "security"
+    - "rls"
+    - "privacy"
+    - "payments"
+    - "auth"
+    - "database"
+
+audit:
+  path: "~/.local/share/beaver-board-mcp/audit.jsonl"
+  redact_secrets: true
+  log_full_payloads: false
+  preview_chars: 500
+
+limits:
+  max_ticket_description_chars: 12000
+  max_comment_chars: 8000
+  max_tickets_returned: 100
+  tool_timeout_ms: 30000
