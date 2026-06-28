@@ -25,7 +25,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
         Directory.CreateDirectory(_tmp);
         _projects = new ProjectService(_tmp);
         _tickets = new TicketService(_projects, new MemberService(_projects));
-        _failures = new FailureLogStore();
+        _failures = new FailureLogStore(_tmp);
         _runRegistry = new AgentRunRegistry();
         _registry = new TestRunnerRegistry();
 

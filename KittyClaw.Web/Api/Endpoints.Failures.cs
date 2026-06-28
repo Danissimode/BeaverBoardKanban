@@ -61,7 +61,7 @@ public static partial class Endpoints
         // Mark a failure as resolved
         api.MapPost("/projects/{slug}/failures/{failureId}/resolve", (string slug, string failureId, FailureLogStore store) =>
         {
-            var ok = store.Resolve(failureId);
+            var ok = store.Resolve(slug, failureId);
             return ok ? Results.Ok(new { resolved = true }) : Results.NotFound();
         }).WithTags("Failures");
 

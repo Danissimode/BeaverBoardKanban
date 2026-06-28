@@ -38,4 +38,5 @@ public sealed class FailureLogEntry
     public string? StackTrace { get; init; }
     public bool Resolved { get; set; }
     public DateTimeOffset? ResolvedAt { get; set; }
+    public string? MetadataJson { get; init; }
 }

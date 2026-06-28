@@ -1,96 +1,224 @@
-using System.Collections.Concurrent;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 namespace KittyClaw.Core.Automation;
 
 /// <summary>
-/// In-memory store for FailureLogEntry records.
-/// Acts as the backend for the failure logbook.
+/// SQLite-backed store for FailureLogEntry records.
+/// Persists failures across restarts.
 /// </summary>
 public sealed class FailureLogStore
 {
-    private readonly ConcurrentDictionary<string, FailureLogEntry> _entries = new();
+    private readonly string _dataDir;
     private readonly ILogger? _logger;
 
-    public FailureLogStore(ILogger? logger = null)
+    public FailureLogStore(string dataDir, ILogger? logger = null)
     {
+        _dataDir = dataDir;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Record a failure for a ticket. Idempotent if the same (ticketId, kind, createdAt) entry already exists.
-    /// </summary>
+    private string DbPath(string projectSlug)
+    {
+        var projectsDir = Path.Combine(_dataDir, "projects");
+        Directory.CreateDirectory(projectsDir);
+        return Path.Combine(projectsDir, $"{projectSlug}.db");
+    }
+
+    public static async Task EnsureTableAsync(string dbPath)
+    {
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS FailureLogEntries (
+                Id TEXT NOT NULL PRIMARY KEY,
+                ProjectSlug TEXT NOT NULL,
+                TicketId INTEGER NOT NULL,
+                Kind TEXT NOT NULL,
+                Message TEXT NOT NULL,
+                RequiredAction TEXT,
+                RunId TEXT,
+                StackTrace TEXT,
+                Resolved INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL,
+                ResolvedAt TEXT
+            );
+            CREATE INDEX IF NOT EXISTS IX_FailureLog_Project_Ticket
+            ON FailureLogEntries (ProjectSlug, TicketId);
+            CREATE INDEX IF NOT EXISTS IX_FailureLog_Resolved
+            ON FailureLogEntries (Resolved);
+        """;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     public FailureLogEntry Record(FailureLogEntry entry)
     {
-        _entries[entry.Id] = entry;
+        return RecordAsync(entry).GetAwaiter().GetResult();
+    }
+
+    public async Task<FailureLogEntry> RecordAsync(FailureLogEntry entry, CancellationToken ct = default)
+    {
+        var dbPath = DbPath(entry.ProjectSlug);
+        await EnsureTableAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            INSERT OR REPLACE INTO FailureLogEntries
+            (Id, ProjectSlug, TicketId, Kind, Message, RequiredAction, RunId, StackTrace, Resolved, CreatedAt, ResolvedAt)
+            VALUES ($id, $project, $ticket, $kind, $message, $action, $run, $stack, $resolved, $created, $resolvedAt)
+        """;
+        cmd.Parameters.AddWithValue("$id", entry.Id);
+        cmd.Parameters.AddWithValue("$project", entry.ProjectSlug);
+        cmd.Parameters.AddWithValue("$ticket", entry.TicketId);
+        cmd.Parameters.AddWithValue("$kind", entry.Kind);
+        cmd.Parameters.AddWithValue("$message", entry.Message);
+        cmd.Parameters.AddWithValue("$action", (object?)entry.RequiredAction ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$run", (object?)entry.RunId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$stack", (object?)entry.StackTrace ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$resolved", entry.Resolved ? 1 : 0);
+        cmd.Parameters.AddWithValue("$created", entry.CreatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$resolvedAt", (object?)entry.ResolvedAt?.ToString("o") ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync(ct);
+
         _logger?.LogInformation("[FAILURE] ticket #{TicketId} [{Kind}]: {Message}",
             entry.TicketId, entry.Kind, entry.Message);
+
         return entry;
     }
 
-    /// <summary>
-    /// Get all entries for a ticket, newest first.
-    /// </summary>
     public IReadOnlyList<FailureLogEntry> ForTicket(string projectSlug, int ticketId) =>
-        _entries.Values
-            .Where(e => e.ProjectSlug == projectSlug && e.TicketId == ticketId)
-            .OrderByDescending(e => e.CreatedAt)
-            .ToList();
+        ForTicketAsync(projectSlug, ticketId).GetAwaiter().GetResult();
 
-    /// <summary>
-    /// Get all unresolved entries for a ticket.
-    /// </summary>
+    public async Task<IReadOnlyList<FailureLogEntry>> ForTicketAsync(string projectSlug, int ticketId, CancellationToken ct = default)
+    {
+        var dbPath = DbPath(projectSlug);
+        await EnsureTableAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM FailureLogEntries WHERE ProjectSlug = $project AND TicketId = $ticket ORDER BY CreatedAt DESC";
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+        cmd.Parameters.AddWithValue("$ticket", ticketId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var results = new List<FailureLogEntry>();
+        while (await reader.ReadAsync(ct))
+            results.Add(ReadEntry(reader));
+        return results;
+    }
+
     public IReadOnlyList<FailureLogEntry> UnresolvedForTicket(string projectSlug, int ticketId) =>
-        ForTicket(projectSlug, ticketId).Where(e => !e.Resolved).ToList();
+        UnresolvedForTicketAsync(projectSlug, ticketId).GetAwaiter().GetResult();
 
-    /// <summary>
-    /// Get all unresolved entries for a project, newest first.
-    /// </summary>
+    public async Task<IReadOnlyList<FailureLogEntry>> UnresolvedForTicketAsync(string projectSlug, int ticketId, CancellationToken ct = default)
+    {
+        var all = await ForTicketAsync(projectSlug, ticketId, ct);
+        return all.Where(e => !e.Resolved).ToList();
+    }
+
     public IReadOnlyList<FailureLogEntry> UnresolvedForProject(string projectSlug) =>
-        _entries.Values
-            .Where(e => e.ProjectSlug == projectSlug && !e.Resolved)
-            .OrderByDescending(e => e.CreatedAt)
-            .ToList();
+        UnresolvedForProjectAsync(projectSlug).GetAwaiter().GetResult();
 
-    /// <summary>
-    /// Get all entries for a project, newest first.
-    /// </summary>
+    public async Task<IReadOnlyList<FailureLogEntry>> UnresolvedForProjectAsync(string projectSlug, CancellationToken ct = default)
+    {
+        var dbPath = DbPath(projectSlug);
+        await EnsureTableAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM FailureLogEntries WHERE ProjectSlug = $project AND Resolved = 0 ORDER BY CreatedAt DESC";
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var results = new List<FailureLogEntry>();
+        while (await reader.ReadAsync(ct))
+            results.Add(ReadEntry(reader));
+        return results;
+    }
+
     public IReadOnlyList<FailureLogEntry> ForProject(string projectSlug) =>
-        _entries.Values
-            .Where(e => e.ProjectSlug == projectSlug)
-            .OrderByDescending(e => e.CreatedAt)
-            .ToList();
+        ForProjectAsync(projectSlug).GetAwaiter().GetResult();
 
-    /// <summary>
-    /// Mark an entry as resolved.
-    /// </summary>
-    public bool Resolve(string entryId)
+    public async Task<IReadOnlyList<FailureLogEntry>> ForProjectAsync(string projectSlug, CancellationToken ct = default)
     {
-        if (_entries.TryGetValue(entryId, out var entry))
-        {
-            entry.Resolved = true;
-            entry.ResolvedAt = DateTimeOffset.UtcNow;
-            return true;
-        }
-        return false;
+        var dbPath = DbPath(projectSlug);
+        await EnsureTableAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM FailureLogEntries WHERE ProjectSlug = $project ORDER BY CreatedAt DESC";
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var results = new List<FailureLogEntry>();
+        while (await reader.ReadAsync(ct))
+            results.Add(ReadEntry(reader));
+        return results;
     }
 
-    /// <summary>
-    /// Delete all entries for a ticket.
-    /// </summary>
-    public void ClearForTicket(string projectSlug, int ticketId)
+    public bool Resolve(string projectSlug, string entryId) =>
+        ResolveAsync(projectSlug, entryId).GetAwaiter().GetResult();
+
+    public async Task<bool> ResolveAsync(string projectSlug, string entryId, CancellationToken ct = default)
     {
-        var ids = _entries.Values
-            .Where(e => e.ProjectSlug == projectSlug && e.TicketId == ticketId)
-            .Select(e => e.Id)
-            .ToList();
-        foreach (var id in ids)
-            _entries.TryRemove(id, out _);
+        var dbPath = DbPath(projectSlug);
+        await EnsureTableAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE FailureLogEntries SET Resolved = 1, ResolvedAt = $now WHERE Id = $id AND ProjectSlug = $project";
+        cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("$id", entryId);
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+        var affected = await cmd.ExecuteNonQueryAsync(ct);
+        return affected > 0;
     }
 
-    /// <summary>
-    /// Get the most recent unresolved failure for a ticket, if any.
-    /// </summary>
+    public void ClearForTicket(string projectSlug, int ticketId) =>
+        ClearForTicketAsync(projectSlug, ticketId).GetAwaiter().GetResult();
+
+    public async Task ClearForTicketAsync(string projectSlug, int ticketId, CancellationToken ct = default)
+    {
+        var dbPath = DbPath(projectSlug);
+        await EnsureTableAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM FailureLogEntries WHERE ProjectSlug = $project AND TicketId = $ticket";
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+        cmd.Parameters.AddWithValue("$ticket", ticketId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
     public FailureLogEntry? LatestUnresolved(string projectSlug, int ticketId) =>
-        UnresolvedForTicket(projectSlug, ticketId).FirstOrDefault();
+        LatestUnresolvedAsync(projectSlug, ticketId).GetAwaiter().GetResult();
+
+    public async Task<FailureLogEntry?> LatestUnresolvedAsync(string projectSlug, int ticketId, CancellationToken ct = default)
+    {
+        var unresolved = await UnresolvedForTicketAsync(projectSlug, ticketId, ct);
+        return unresolved.FirstOrDefault();
+    }
+
+    private static FailureLogEntry ReadEntry(SqliteDataReader r) => new()
+    {
+        Id = r.GetString(r.GetOrdinal("Id")),
+        ProjectSlug = r.GetString(r.GetOrdinal("ProjectSlug")),
+        TicketId = r.GetInt32(r.GetOrdinal("TicketId")),
+        Kind = r.GetString(r.GetOrdinal("Kind")),
+        Message = r.GetString(r.GetOrdinal("Message")),
+        RequiredAction = r.IsDBNull(r.GetOrdinal("RequiredAction")) ? null : r.GetString(r.GetOrdinal("RequiredAction")),
+        RunId = r.IsDBNull(r.GetOrdinal("RunId")) ? null : r.GetString(r.GetOrdinal("RunId")),
+        StackTrace = r.IsDBNull(r.GetOrdinal("StackTrace")) ? null : r.GetString(r.GetOrdinal("StackTrace")),
+        Resolved = r.GetInt32(r.GetOrdinal("Resolved")) == 1,
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))),
+        ResolvedAt = r.IsDBNull(r.GetOrdinal("ResolvedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ResolvedAt")))
+    };
 }

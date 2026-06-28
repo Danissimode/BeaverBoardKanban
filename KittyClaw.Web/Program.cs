@@ -107,8 +107,8 @@ builder.Services.AddSingleton<OpenCodePolicyConfig>();
 builder.Services.AddSingleton<OpenCodeRunner>();
 builder.Services.AddSingleton<IWorktreeService, WorktreeService>();
 
-// Failure logbook (in-memory, survives across requests)
-builder.Services.AddSingleton<FailureLogStore>();
+// Failure logbook (SQLite-backed, persists across restarts)
+builder.Services.AddSingleton<FailureLogStore>(sp => new FailureLogStore(dataDir));
 
 // Team Chat
 builder.Services.AddSingleton<ITeamChatService>(sp => new TeamChatService(dataDir));
