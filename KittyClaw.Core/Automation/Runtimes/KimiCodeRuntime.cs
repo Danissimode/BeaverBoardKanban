@@ -2,6 +2,24 @@ using Microsoft.Extensions.Logging;
 
 namespace KittyClaw.Core.Automation.Runtimes;
 
+/// <summary>
+/// Runtime adapter for Kimi Code.
+/// </summary>
+/// <remarks>
+/// <para><b>Important:</b> Kimi Code is primarily an IDE-integrated coding assistant
+/// (VS Code extension), not a standalone CLI tool. This runtime assumes a CLI wrapper
+/// or the <c>kimi</c> command is available on PATH.</para>
+///
+/// <para>For IDE-based Kimi usage, consider:</para>
+/// <list type="bullet">
+///   <item>Using <see cref="ExecutionModeOverride"/> = "Manual" on tickets</item>
+///   <item>Switching to <see cref="OpenCodeRuntime"/> with a Kimi-compatible provider</item>
+///   <item>Using <see cref="ClaudeCodeRuntime"/> as the primary runtime instead</item>
+/// </list>
+///
+/// <para>This runtime rejects dangerous flags (<c>-y</c>, <c>--yolo</c>, <c>--auto-approve</c>)
+/// as a safety measure since Kimi Code may execute file modifications.</para>
+/// </remarks>
 public sealed class KimiCodeRuntime : IAgentRuntime
 {
     private readonly ProcessRunner _processRunner;
