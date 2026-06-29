@@ -147,6 +147,19 @@ public sealed class AgentsTemplateService
         catch { return false; }
     }
 
+    public bool IsOpenCodeAvailable()
+    {
+        try
+        {
+            var (ok, _) = RunProcess("opencode", "--version", workingDirectory: null);
+            if (ok) return true;
+            // Also check for opencode-cli
+            var (ok2, _) = RunProcess("opencode-cli", "--version", workingDirectory: null);
+            return ok2;
+        }
+        catch { return false; }
+    }
+
     private static (bool Ok, string Output) RunProcess(string file, string args, string? workingDirectory)
     {
         try

@@ -82,36 +82,80 @@
 @if (_showOnboarding)
 {
     <div class="modal-backdrop">
-        <div class="modal-dialog onboarding-dialog" @onclick:stopPropagation>
-            <img src="/BeaverBoard.webp" alt="Beaver Board" class="onboarding-logo" />
-            <h2>Welcome to Beaver Board</h2>
-            <p>@L["OnboardingIntro1"]</p>
-            <p>@L["OnboardingIntro2"]</p>
+        <div class="onboarding-container" @onclick:stopPropagation>
+            <div class="onboarding-card">
+                <div class="onboarding-header">
+                    <img src="/BeaverBoard-Logo-Horizontal.webp" alt="Beaver Board" class="onboarding-logo" />
+                    <h1>@L["OnboardingTitle"]</h1>
+                    <p class="onboarding-subtitle">@L["OnboardingSubtitle"]</p>
+                </div>
 
-            <h3 style="margin-top:1rem;font-size:0.95rem">@L["OnboardingRequirements"]</h3>
-            <div class="onboarding-check @(_claudeInstalled ? "ok" : "missing")">
-                <span>@(_claudeInstalled ? "✓" : "✗") Claude Code</span>
-                @if (!_claudeInstalled)
+                <div class="onboarding-section">
+                    <h3>@L["ConnectorTitle"]</h3>
+                    <div class="connector-cards">
+                        <div class="connector-card connector-primary @(_opencodeInstalled ? "ok" : "missing")">
+                            <div class="connector-icon">🦫</div>
+                            <div class="connector-info">
+                                <span class="connector-name">@L["OpenCode"]</span>
+                                <span class="connector-status">@(_opencodeInstalled ? L["StatusInstalled"] : L["StatusNotInstalled"])</span>
+                            </div>
+                            @if (_opencodeInstalled)
+                            {
+                                <span class="connector-check">✓</span>
+                            }
+                            else
+                            {
+                                <a class="connector-install-btn" href="https://opencode.ai" target="_blank" rel="noopener">@L["Install"]</a>
+                            }
+                        </div>
+
+                        <div class="connector-card connector-optional @(_claudeInstalled ? "ok" : "optional")">
+                            <div class="connector-icon">🤖</div>
+                            <div class="connector-info">
+                                <span class="connector-name">@L["ClaudeCode"] <span class="optional-badge">@L["Optional"]</span></span>
+                                <span class="connector-status">@(_claudeInstalled ? L["StatusInstalled"] : L["StatusOptionalNotInstalled"])</span>
+                            </div>
+                            @if (_claudeInstalled)
+                            {
+                                <span class="connector-check">✓</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="onboarding-section">
+                    <h3>@L["SystemToolsTitle"]</h3>
+                    <div class="connector-cards">
+                        <div class="connector-card @(_gitInstalled ? "ok" : "missing")">
+                            <div class="connector-icon">📦</div>
+                            <div class="connector-info">
+                                <span class="connector-name">@L["Git"]</span>
+                                <span class="connector-status">@(_gitInstalled ? L["StatusInstalled"] : L["StatusNotInstalled"])</span>
+                            </div>
+                            @if (_gitInstalled)
+                            {
+                                <span class="connector-check">✓</span>
+                            }
+                            else
+                            {
+                                <a class="connector-install-btn" href="https://git-scm.com/downloads" target="_blank" rel="noopener">@L["Install"]</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (!_opencodeInstalled || !_gitInstalled)
                 {
-                    <a class="header-action-btn" href="https://docs.claude.com/en/docs/claude-code/overview" target="_blank" rel="noopener">@L["OnboardingInstall"]</a>
+                    <div class="onboarding-warning">
+                        <span class="warning-icon">⚠️</span>
+                        <span>@L["OnboardingWarning"]</span>
+                    </div>
                 }
-            </div>
-            <div class="onboarding-check @(_gitInstalled ? "ok" : "missing")">
-                <span>@(_gitInstalled ? "✓" : "✗") Git</span>
-                @if (!_gitInstalled)
-                {
-                    <a class="header-action-btn" href="https://git-scm.com/downloads" target="_blank" rel="noopener">@L["OnboardingInstall"]</a>
-                }
-            </div>
 
-            @if (!_claudeInstalled || !_gitInstalled)
-            {
-                <p class="settings-status settings-status-err" style="margin-top:0.75rem">@L["OnboardingMissingWarning"]</p>
-            }
-
-            <div class="modal-actions">
-                <button class="header-action-btn" @onclick="RecheckTools">@L["Recheck"]</button>
-                <button class="header-action-btn settings-primary" @onclick="DismissOnboarding">@L["Continue"]</button>
+                <div class="onboarding-actions">
+                    <button class="btn-secondary" @onclick="RecheckTools">@L["Recheck"]</button>
+                    <button class="btn-primary" @onclick="DismissOnboarding">@L["Continue"]</button>
+                </div>
             </div>
         </div>
     </div>
@@ -203,6 +247,7 @@
     private bool? _workspaceExists;
     private bool _showOnboarding;
     private bool _onboardingEvaluated;
+    private bool _opencodeInstalled;
     private bool _claudeInstalled;
     private bool _gitInstalled;
     private List<string>? _initConflicts;
@@ -215,7 +260,7 @@
         L.OnLanguageChanged += OnLangChanged;
         RunsState.OnChange += OnRunsChanged;
         RecheckTools();
-        _showOnboarding = !AppSettings.OnboardingSeen || !_claudeInstalled || !_gitInstalled;
+        _showOnboarding = !AppSettings.OnboardingSeen || !_opencodeInstalled || !_gitInstalled;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -256,8 +301,10 @@
 
     private void RecheckTools()
     {
-        _claudeInstalled = AgentsTemplate.IsClaudeAvailable();
+        _opencodeInstalled = AgentsTemplate.IsOpenCodeAvailable();
         _gitInstalled = AgentsTemplate.IsGitAvailable();
+        // Claude Code is optional
+        _claudeInstalled = AgentsTemplate.IsClaudeAvailable();
     }
 
     private async Task DismissOnboarding()

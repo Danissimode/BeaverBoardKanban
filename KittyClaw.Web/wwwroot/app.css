@@ -5199,3 +5199,269 @@ details[open] .tool-call-summary::before { transform: rotate(90deg); }
 }
 .send-btn:hover { background: var(--accent-hover, #FB923C); }
 .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Onboarding Redesign ──────────────────────────────────────────────────── */
+.onboarding-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    padding: 1.5rem;
+}
+
+.onboarding-card {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+.onboarding-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.onboarding-logo {
+    height: 60px;
+    margin-bottom: 1rem;
+    object-fit: contain;
+}
+
+.onboarding-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.onboarding-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.onboarding-section {
+    margin-bottom: 1.5rem;
+}
+
+.onboarding-section h3 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.connector-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.connector-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.connector-card.connector-primary {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    box-shadow: 0 0 0 1px var(--accent-dim), 0 4px 16px rgba(249,115,22,0.1);
+}
+
+.connector-card.connector-primary.missing {
+    border-color: var(--border-strong);
+    background: var(--surface2);
+    box-shadow: none;
+}
+
+.connector-card.connector-optional {
+    border-color: var(--border);
+    background: var(--surface2);
+}
+
+.connector-card.ok {
+    border-color: var(--accent-success);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.connector-card.missing {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.connector-card.optional {
+    border-color: var(--border);
+    background: var(--surface2);
+    opacity: 0.85;
+}
+
+.connector-icon {
+    font-size: 1.75rem;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface3);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.connector-primary .connector-icon {
+    background: var(--accent);
+}
+
+.connector-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.connector-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.optional-badge {
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 0.1rem 0.4rem;
+    background: rgba(255,255,255,0.1);
+    color: var(--text-muted);
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.connector-status {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.connector-card.ok .connector-status {
+    color: var(--accent-success);
+}
+
+.connector-check {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent-success);
+}
+
+.connector-install-btn {
+    padding: 0.35rem 0.85rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.connector-install-btn:hover {
+    background: var(--accent-hover);
+    color: #fff;
+}
+
+.onboarding-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.warning-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+.onboarding-warning span:last-child {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.onboarding-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.btn-primary {
+    padding: 0.55rem 1.5rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    padding: 0.55rem 1.2rem;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-secondary:hover {
+    background: var(--surface3);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Modal dialog overrides for old style */
+.modal-dialog {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 2rem;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.onboarding-logo {
+    height: 48px;
+    margin-bottom: 1rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
