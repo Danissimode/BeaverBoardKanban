@@ -31,10 +31,12 @@ if (string.IsNullOrEmpty(builder.Configuration["urls"]))
 }
 
 // KITTYCLAW_DATA_DIR overrides the default %APPDATA%/KittyClaw location.
+// Also supports BEAVERBOARD_DATA_DIR as the new canonical env var name.
 // Used by isolated test instances (KittyClaw.QaRunner) and anyone running
 // multiple parallel KittyClaw processes that must not share registry/projects.
 var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-var dataDir = Environment.GetEnvironmentVariable("KITTYCLAW_DATA_DIR")
+var dataDir = Environment.GetEnvironmentVariable("BEAVERBOARD_DATA_DIR")
+    ?? Environment.GetEnvironmentVariable("KITTYCLAW_DATA_DIR")
     ?? Path.Combine(appData, "KittyClaw");
 var legacyDataDir = Path.Combine(appData, "TodoApp");
 if (!Directory.Exists(dataDir) && Directory.Exists(legacyDataDir))
@@ -65,16 +67,36 @@ builder.Services.AddSingleton<SessionRegistry>();
 builder.Services.AddSingleton(new RunLogStore(dataDir));
 builder.Services.AddSingleton<AgentRunRegistry>(sp => new AgentRunRegistry(sp.GetRequiredService<RunLogStore>()));
 // Cap concurrent claude subprocesses across all projects (chats bypass). Override with the
-// KITTYCLAW_MAX_CONCURRENT_AGENTS env var if 3 is too tight or too loose for the host.
-var maxConcurrent = int.TryParse(Environment.GetEnvironmentVariable("KITTYCLAW_MAX_CONCURRENT_AGENTS"), out var mc) && mc > 0 ? mc : 3;
+// BEAVERBOARD_MAX_CONCURRENT_AGENTS (or legacy KITTYCLAW_MAX_CONCURRENT_AGENTS) env var
+// if 3 is too tight or too loose for the host.
+var maxConcurrent = int.TryParse(
+    Environment.GetEnvironmentVariable("BEAVERBOARD_MAX_CONCURRENT_AGENTS")
+    ?? Environment.GetEnvironmentVariable("KITTYCLAW_MAX_CONCURRENT_AGENTS"),
+    out var mc) && mc > 0 ? mc : 3;
 builder.Services.AddSingleton(new RunConcurrencyGate(maxConcurrent));
 
-// Runtime config
+// Runtime config — load default project/workspace from configuration instead of hardcoded values
 builder.Services.AddSingleton<AgentRuntimeConfigLoader>(sp => new AgentRuntimeConfigLoader(dataDir));
 builder.Services.AddSingleton(sp =>
 {
     var loader = sp.GetRequiredService<AgentRuntimeConfigLoader>();
-    return loader.Load("petpals") ?? loader.CreateDefault("petpals", "/Users/danissimode/Documents/GitHub/PetPalsCursor");
+    var config = sp.GetRequiredService<IConfiguration>();
+    var defaultProject = config["BeaverBoard:DefaultProject"];
+    var defaultWorkspace = config["BeaverBoard:DefaultWorkspace"];
+
+    // Fall back to legacy env vars for backward compatibility
+    defaultProject ??= Environment.GetEnvironmentVariable("BEAVERBOARD_DEFAULT_PROJECT")
+        ?? Environment.GetEnvironmentVariable("KITTYCLAW_DEFAULT_PROJECT");
+    defaultWorkspace ??= Environment.GetEnvironmentVariable("BEAVERBOARD_DEFAULT_WORKSPACE")
+        ?? Environment.GetEnvironmentVariable("KITTYCLAW_DEFAULT_WORKSPACE");
+
+    if (!string.IsNullOrWhiteSpace(defaultProject) && !string.IsNullOrWhiteSpace(defaultWorkspace))
+    {
+        return loader.Load(defaultProject) ?? loader.CreateDefault(defaultProject, defaultWorkspace);
+    }
+
+    // No default configured — return null and let consumers handle it gracefully
+    return null;
 });
 
 // Runtimes (all implement IAgentRuntime)
@@ -152,11 +174,18 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<KittyClaw.Web.Serv
 if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<KittyClaw.Core.Platform.IFolderPicker, KittyClaw.Core.Platform.WindowsFolderPicker>();
 
+// CORS: restrict to configured origins instead of allowing all
+// Falls back to localhost defaults for development safety
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? new[] { "http://localhost:5230", "http://localhost:5231" };
+
+    options.AddPolicy("BeaverBoardCors", policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -188,9 +217,19 @@ app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
 
 app.UseAntiforgery();
 
-app.UseCors("AllowAll");
+app.UseCors("BeaverBoardCors");
 app.MapOpenApi();
 app.MapTodoApi();
+
+// Health check endpoint — always returns 200 when app is responsive
+app.MapGet("/api/health", () => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTimeOffset.UtcNow,
+    version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+    dataDir,
+    maxConcurrentAgents = maxConcurrent
+})).ExcludeFromDescription();
 
 if (app.Environment.IsDevelopment())
 {
