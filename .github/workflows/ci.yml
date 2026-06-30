@@ -33,6 +33,11 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --verbosity normal
 
+      - name: Public Repo Audit
+        run: |
+          chmod +x scripts/audit-public-repo.sh
+          scripts/audit-public-repo.sh
+
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest

@@ -1,0 +1,51 @@
+{
+  "columns": [
+    { "id": "backlog", "name": "Backlog", "order": 0 },
+    { "id": "in-progress", "name": "In Progress", "order": 1 },
+    { "id": "review", "name": "Review", "order": 2 },
+    { "id": "done", "name": "Done", "order": 3 }
+  ],
+  "labels": [
+    { "id": "bug", "name": "Bug", "color": "#e63946" },
+    { "id": "feature", "name": "Feature", "color": "#457b9d" },
+    { "id": "docs", "name": "Docs", "color": "#2a9d8f" }
+  ],
+  "tickets": [
+    {
+      "id": "DEMO-001",
+      "title": "Hello, Beaver Board!",
+      "description": "Your first ticket. Move it to Done when you're done exploring.",
+      "columnId": "done",
+      "labels": [],
+      "assignee": null,
+      "order": 0
+    },
+    {
+      "id": "DEMO-002",
+      "title": "Try starting an agent run",
+      "description": "Click on any ticket → Execution tab → pick a runner → click Start.\n\nThe agent will take over from here.",
+      "columnId": "in-progress",
+      "labels": ["feature"],
+      "assignee": null,
+      "order": 0
+    },
+    {
+      "id": "DEMO-003",
+      "title": "Attach evidence to this ticket",
+      "description": "Open the ticket drawer → Execution tab → Attach Evidence.\n\nEvidence can include test results, screenshots, or a summary.",
+      "columnId": "review",
+      "labels": ["docs"],
+      "assignee": null,
+      "order": 0
+    },
+    {
+      "id": "DEMO-004",
+      "title": "Add your first automation",
+      "description": "Project Settings → Automations tab → Add trigger.\n\nExample: when a ticket moves to Done, post a message to team chat.",
+      "columnId": "backlog",
+      "labels": ["feature"],
+      "assignee": null,
+      "order": 0
+    }
+  ]
+}

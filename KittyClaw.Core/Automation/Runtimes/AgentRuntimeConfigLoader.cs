@@ -75,7 +75,7 @@ public class AgentRuntimeConfigLoader
             WorkspacePath = workspacePath,
             DefaultRuntime = defaultRuntime,
             DefaultRole = CaoRoleIds.Developer,
-            DefaultModelProfile = "petpals-coder",
+            DefaultModelProfile = "default-coder",
             HighRiskLabels = new[] { "security", "rls", "payments", "stripe", "critical" },
             RuntimeByMember = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -112,19 +112,19 @@ public class AgentRuntimeConfigLoader
             },
             ModelProfileByRole = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { CaoRoleIds.Planner, "petpals-planner" },
-                { CaoRoleIds.Developer, "petpals-coder" },
-                { CaoRoleIds.Reviewer, "petpals-reviewer" },
-                { CaoRoleIds.SecurityReviewer, "petpals-security-reviewer" },
-                { CaoRoleIds.Researcher, "petpals-researcher" },
-                { CaoRoleIds.Qa, "petpals-cheap" },
+                { CaoRoleIds.Planner, "default-planner" },
+                { CaoRoleIds.Developer, "default-coder" },
+                { CaoRoleIds.Reviewer, "default-reviewer" },
+                { CaoRoleIds.SecurityReviewer, "default-security" },
+                { CaoRoleIds.Researcher, "default-researcher" },
+                { CaoRoleIds.Qa, "default-qa" },
             },
             ModelProfileByRuntime = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "mimo-code", "petpals-coder" },
-                { "codex", "petpals-coder" },
-                { "kimi-code", "petpals-researcher" },
-                { "script", "petpals-cheap" },
+                { "mimo-code", "default-coder" },
+                { "codex", "default-coder" },
+                { "kimi-code", "default-researcher" },
+                { "script", "default-qa" },
             },
             Runtimes = new Dictionary<string, AgentRuntimeConfig>(StringComparer.OrdinalIgnoreCase)
             {
@@ -262,44 +262,44 @@ public class AgentRuntimeConfigLoader
             ModelProfiles = new Dictionary<string, ModelProfileConfig>(StringComparer.OrdinalIgnoreCase)
             {
                 {
-                    "petpals-planner", new ModelProfileConfig
+                    "default-planner", new ModelProfileConfig
                     {
-                        Id = "petpals-planner",
+                        Id = "default-planner",
                         DisplayName = "Planner",
-                        Model = "petpals-planner",
+                        Model = "default-planner",
                         Provider = "litellm",
                         BaseUrl = "http://localhost:4000/v1",
                         ApiKeyEnv = "LITELLM_API_KEY",
                     }
                 },
                 {
-                    "petpals-coder", new ModelProfileConfig
+                    "default-coder", new ModelProfileConfig
                     {
-                        Id = "petpals-coder",
+                        Id = "default-coder",
                         DisplayName = "Coder",
-                        Model = "petpals-coder",
+                        Model = "default-coder",
                         Provider = "litellm",
                         BaseUrl = "http://localhost:4000/v1",
                         ApiKeyEnv = "LITELLM_API_KEY",
                     }
                 },
                 {
-                    "petpals-reviewer", new ModelProfileConfig
+                    "default-reviewer", new ModelProfileConfig
                     {
-                        Id = "petpals-reviewer",
+                        Id = "default-reviewer",
                         DisplayName = "Reviewer",
-                        Model = "petpals-reviewer",
+                        Model = "default-reviewer",
                         Provider = "litellm",
                         BaseUrl = "http://localhost:4000/v1",
                         ApiKeyEnv = "LITELLM_API_KEY",
                     }
                 },
                 {
-                    "petpals-security-reviewer", new ModelProfileConfig
+                    "default-security", new ModelProfileConfig
                     {
-                        Id = "petpals-security-reviewer",
+                        Id = "default-security",
                         DisplayName = "Security Reviewer",
-                        Model = "petpals-security-reviewer",
+                        Model = "default-security",
                         Provider = "litellm",
                         BaseUrl = "http://localhost:4000/v1",
                         ApiKeyEnv = "LITELLM_API_KEY",
@@ -307,22 +307,22 @@ public class AgentRuntimeConfigLoader
                     }
                 },
                 {
-                    "petpals-researcher", new ModelProfileConfig
+                    "default-researcher", new ModelProfileConfig
                     {
-                        Id = "petpals-researcher",
+                        Id = "default-researcher",
                         DisplayName = "Researcher",
-                        Model = "petpals-researcher",
+                        Model = "default-researcher",
                         Provider = "litellm",
                         BaseUrl = "http://localhost:4000/v1",
                         ApiKeyEnv = "LITELLM_API_KEY",
                     }
                 },
                 {
-                    "petpals-cheap", new ModelProfileConfig
+                    "default-qa", new ModelProfileConfig
                     {
-                        Id = "petpals-cheap",
+                        Id = "default-qa",
                         DisplayName = "Cheap",
-                        Model = "petpals-cheap",
+                        Model = "default-qa",
                         Provider = "litellm",
                         BaseUrl = "http://localhost:4000/v1",
                         ApiKeyEnv = "LITELLM_API_KEY",

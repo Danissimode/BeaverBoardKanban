@@ -173,6 +173,9 @@ public sealed class OpenCodeRunner : IAgentRunner
                 SteerSupported = true // Now supported via temp file
             };
             
+            // Attach metadata to the run so it persists with the run log
+            agentRun.ExecutionMetadata = executionMetadata;
+            
             // Determine execution path
             if (_config.UseServer && !string.IsNullOrEmpty(_config.ServerUrl))
             {
@@ -228,6 +231,21 @@ public sealed class OpenCodeRunner : IAgentRunner
 
         // Start the run via POST /api/runs
         using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        
+        // Prepend pending steer messages to prompt for server mode
+        var effectivePrompt = request.Prompt ?? "";
+        if (request.PendingSteerMessages?.Count > 0)
+        {
+            var sb = new StringBuilder();
+            foreach (var steer in request.PendingSteerMessages)
+            {
+                sb.AppendLine($"[Steering message from previous turn]: {steer}");
+            }
+            sb.AppendLine();
+            sb.Append(effectivePrompt);
+            effectivePrompt = sb.ToString();
+        }
+        
         var startPayload = new
         {
             runId = agentRun.RunId,
@@ -237,7 +255,7 @@ public sealed class OpenCodeRunner : IAgentRunner
             profile = executionMetadata.Profile,
             workspace = workingDir,
             maxTurns = request.MaxTurns,
-            prompt = request.Prompt,
+            prompt = effectivePrompt,
             contextFile = contextFile,
             metadata = new
             {
@@ -289,7 +307,7 @@ public sealed class OpenCodeRunner : IAgentRunner
         var stdoutBuilder = new StringBuilder();
         var stderrBuilder = new StringBuilder();
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, agentRun.Cancellation.Token);
 
         try
         {
@@ -523,6 +541,10 @@ public sealed class OpenCodeRunner : IAgentRunner
         var workingDir = request.WorktreePath ?? request.WorkspacePath;
         Directory.CreateDirectory(workingDir);
         
+        // Link external cancellation with run's internal cancellation
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, agentRun.Cancellation.Token);
+        
         // Build CLI arguments using template
         var arguments = BuildCliArguments(request, executionMetadata, out var promptFile);
         var commandDisplay = $"{cliCommand} {string.Join(" ", arguments.Select(a => $"\"{a}\""))}";
@@ -588,12 +610,21 @@ public sealed class OpenCodeRunner : IAgentRunner
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         
-        // Start steering file watcher task
-        var steerTask = HandleSteeringAsync(agentRun, workingDir, CancellationToken.None);
+        // Start steering file watcher task (linked cancellation)
+        var steerTask = HandleSteeringAsync(agentRun, workingDir, linkedCts.Token);
+        
+        // Pre-seed steer file with any pending steer messages from previous runs
+        if (request.PendingSteerMessages?.Count > 0)
+        {
+            foreach (var steer in request.PendingSteerMessages)
+            {
+                await agentRun.SteeringQueue.Writer.WriteAsync(steer, linkedCts.Token);
+            }
+        }
         
         try
         {
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(linkedCts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -747,13 +778,26 @@ public sealed class OpenCodeRunner : IAgentRunner
         
         // Write prompt to a temp file and pass --prompt-file.
         // This avoids shell-escaping issues with long prompts and special characters.
-        if (!string.IsNullOrEmpty(request.Prompt))
+        // Pending steer messages from a previous run are prepended so the agent receives them.
+        if (!string.IsNullOrEmpty(request.Prompt) || request.PendingSteerMessages?.Count > 0)
         {
             var workingDir = request.WorktreePath ?? request.WorkspacePath;
             var tmpDir = Path.Combine(workingDir, ".agents", "tmp");
             Directory.CreateDirectory(tmpDir);
             promptFile = Path.Combine(tmpDir, $"prompt-{Guid.NewGuid():N}.txt");
-            File.WriteAllText(promptFile, request.Prompt);
+            
+            var promptBuilder = new StringBuilder();
+            if (request.PendingSteerMessages?.Count > 0)
+            {
+                foreach (var steer in request.PendingSteerMessages)
+                {
+                    promptBuilder.AppendLine($"[Steering message from previous turn]: {steer}");
+                }
+                promptBuilder.AppendLine();
+            }
+            promptBuilder.Append(request.Prompt);
+            
+            File.WriteAllText(promptFile, promptBuilder.ToString());
             arguments.Add("--prompt-file");
             arguments.Add(promptFile);
         }
@@ -890,7 +934,7 @@ public sealed class OpenCodeConfig
     /// <summary>
     /// Default model to use
     /// </summary>
-    public string? DefaultModel { get; set; } = "anthropic/claude-3-5-sonnet-20241022";
+    public string? DefaultModel { get; set; } = "openrouter/anthropic/claude-3-5-sonnet";
     
     /// <summary>
     /// Default OpenCode agent to use

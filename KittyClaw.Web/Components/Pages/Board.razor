@@ -26,6 +26,8 @@
 @inject LocalizationService L
 @inject KittyClaw.Web.Services.EscapeKeyStack EscapeStack
 @inject HttpClient Http
+@inject TokenBudgetService TokenBudget
+@using KittyClaw.Core.Automation
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -1061,6 +1063,50 @@ else
                         {
                             <div class="health-indicator @(_opencodeHealth == "available" ? "ok" : "warn")">
                                 OpenCode: @_opencodeHealth
+                            </div>
+                        }
+
+                        @* Token budget indicator — shows role limits and context size *@
+                        @if (_selectedTicket?.AssignedTo is not null)
+                        {
+                            var roleBudget = RoleBudgetConfig.For(_selectedTicket.AssignedTo!);
+                            var ctxEstimate = TokenBudget.EstimateCardContext(
+                                _selectedTicket!.Title,
+                                _selectedTicket.Description,
+                                _selectedTicket.Labels.Select(l => l.Name).ToList(),
+                                _selectedTicket.AssignedTo,
+                                _selectedTicket.Status,
+                                _latestRunMeta?.LastError,
+                                null);
+                            <div class="budget-indicator @GetBudgetClass(ctxEstimate, roleBudget)">
+                                <div class="budget-row">
+                                    <span class="budget-label">@L["RoleBudget"]</span>
+                                    <span>@_selectedTicket.AssignedTo</span>
+                                </div>
+                                <div class="budget-row">
+                                    <span class="budget-label">@L["ContextTokens"]</span>
+                                    <span>@ctxEstimate.EstimatedTokens.ToString("N0") tokens</span>
+                                </div>
+                                @if (ctxEstimate.ContextSizeLevel is ContextSizeLevel.Medium or ContextSizeLevel.Large)
+                                {
+                                    <div class="budget-warning">
+                                        @if (ctxEstimate.ContextSizeLevel == ContextSizeLevel.Large)
+                                        {
+                                            <span>⚠️ @L["LargeContextWarning"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@L["MediumContextWarning"]</span>
+                                        }
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(roleBudget.FallbackModel))
+                                {
+                                    <div class="budget-row budget-model">
+                                        <span class="budget-label">@L["FallbackModel"]</span>
+                                        <code>@roleBudget.FallbackModel</code>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
@@ -2136,6 +2182,14 @@ else
         "manual" => "⚪",
         _ => "⚙️"
     };
+
+    private static string GetBudgetClass(TokenEstimate estimate, RoleBudgetConfig budget) =>
+        estimate.ContextSizeLevel switch
+        {
+            ContextSizeLevel.Large => "budget-large",
+            ContextSizeLevel.Medium => "budget-medium",
+            _ => estimate.EstimatedTokens > budget.MaxInputTokens ? "budget-over" : "budget-ok"
+        };
 
     private static string GetElapsed(DateTime start)
     {

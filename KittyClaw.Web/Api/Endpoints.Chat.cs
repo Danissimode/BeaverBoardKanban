@@ -19,15 +19,16 @@ public static partial class Endpoints
             return Results.Ok(runners);
         }).WithTags("Chat");
 
-        // Owner chat (ad-hoc Claude session)
-        api.MapGet("/projects/{slug}/chat/targets", async (string slug, ProjectService ps, MemberService ms, ChatService cs) =>
+        // Owner chat (ad-hoc AI session with the default runner)
+        api.MapGet("/projects/{slug}/chat/targets", async (string slug, ProjectService ps, MemberService ms, ChatService cs, RunnerRegistry registry) =>
         {
             var project = await ps.GetProjectAsync(slug);
             if (project is null) return Results.NotFound();
 
+            var defaultRunner = registry.GetDefaultRunner();
             var targets = new List<ChatTargetDto>
             {
-                new("owner-chat", "Claude", "claude"),
+                new("owner-chat", defaultRunner.DisplayName, defaultRunner.Kind),
             };
             var members = await ms.ListMembersAsync(slug);
             foreach (var m in members)
@@ -123,7 +124,7 @@ public static partial class Endpoints
             var (baseAgent, parsedTicketId) = ParseChatTarget(target);
             var effectiveTicketId = req.TicketId ?? parsedTicketId;
 
-            // Drain pending steer messages
+            // Drain pending steer messages from the last completed run for this chat target
             var pendingSteerMessages = runReg.LastCompletedForChatTarget(slug, target)?.DrainPendingSteerMessages();
 
             if (req.ForceNew)
@@ -184,6 +185,7 @@ public static partial class Endpoints
                 OnEventHook = ev => PersistChatEvent(cs, slug, target, ev),
                 ImagePaths = imagePaths,
                 ChatTarget = target,
+                PendingSteerMessages = pendingSteerMessages, // Pass drained steer messages
                 Environment = new Dictionary<string, string>
                 {
                     ["BEAVER_CHAT_TARGET"] = target,

@@ -79,6 +79,55 @@ else
         </section>
 
         <section class="settings-section">
+            <h2>@L["RunnersSection"]</h2>
+            <p class="settings-hint">@L["RunnersHint"]</p>
+
+            <h3>@L["DefaultRunner"]</h3>
+            <p class="settings-hint">@L["DefaultRunnerHint"]</p>
+            <div class="settings-row">
+                @foreach (var runner in _runnerHealth)
+                {
+                    <label class="runner-radio @(runner.Kind == _defaultRunner ? "runner-radio-selected" : "")">
+                        <input type="radio" name="default-runner" value="@runner.Kind"
+                               checked="@(runner.Kind == _defaultRunner)"
+                               @onchange="() => SetDefaultRunner(runner.Kind)" />
+                        <span class="runner-radio-icon">@GetRunnerIcon(runner.Kind)</span>
+                        <span class="runner-radio-name">@runner.DisplayName</span>
+                        <span class="runner-radio-status @(runner.Available ? "status-ok" : "status-err")">
+                            @(runner.Available ? L["RunnerAvailable"] : L["RunnerUnavailable"])
+                        </span>
+                    </label>
+                }
+            </div>
+
+            <h3>@L["RunDiagnostics"]</h3>
+            <div class="settings-row">
+                <button class="settings-secondary" @onclick="RunDiagnostics" disabled="@_runningDiagnostics">
+                    @(_runningDiagnostics ? L["DiagnosticsRunning"] : L["RunDiagnostics"])
+                </button>
+            </div>
+            @if (_diagnosticsResult is not null)
+            {
+                <div class="diagnostics-result @(_diagnosticsResult.AllOk ? "diagnostics-ok" : "diagnostics-issues")">
+                    @if (_diagnosticsResult.AllOk)
+                    {
+                        <span>✅ @L["DiagnosticsAllOk"]</span>
+                    }
+                    else
+                    {
+                        <span>⚠️ @L["DiagnosticsIssues"]</span>
+                        <ul class="diagnostics-list">
+                            @foreach (var issue in _diagnosticsResult.Issues)
+                            {
+                                <li>@issue</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="settings-section">
             <h2>@L["Members"]</h2>
             <p class="settings-hint">@L["MembersHint"]</p>
             <table class="settings-list">
@@ -320,6 +369,12 @@ else
 
     private bool _deleteConfirmProject;
 
+    // Runners section state
+    private List<RunnerHealth> _runnerHealth = new();
+    private string? _defaultRunner;
+    private bool _runningDiagnostics;
+    private DiagnosticsResult? _diagnosticsResult;
+
     protected override async Task OnInitializedAsync()
     {
         L.OnLanguageChanged += OnLanguageChanged;
@@ -329,6 +384,7 @@ else
         _fallbackModel = _project.FallbackModel ?? "";
         await ReloadAllAsync();
         await ProbeBrowseAsync();
+        await LoadRunnersAsync();
     }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
@@ -361,6 +417,8 @@ else
 
     private sealed record BrowseCapabilities(bool FolderPicker);
     private sealed record BrowseResult(string Path);
+    private sealed record RunnerHealth(string Kind, string DisplayName, bool Available, string? Version, string? Error);
+    private sealed record DiagnosticsResult(bool AllOk, List<string> Issues);
 
     private async Task BrowseWorkspace()
     {
@@ -376,6 +434,62 @@ else
         }
         finally { _browsing = false; }
     }
+
+    private async Task LoadRunnersAsync()
+    {
+        try
+        {
+            var reports = await NewHttp().GetFromJsonAsync<List<RunnerHealth>>("/api/runners/health");
+            if (reports != null)
+                _runnerHealth = reports;
+
+            var def = await NewHttp().GetFromJsonAsync<RunnerHealth>("/api/runners/default");
+            _defaultRunner = def?.Kind;
+        }
+        catch { _runnerHealth = new(); _defaultRunner = null; }
+    }
+
+    private async Task SetDefaultRunner(string kind)
+    {
+        _defaultRunner = kind;
+        try
+        {
+            await NewHttp().PostAsJsonAsync("/api/runners/default", new { kind });
+        }
+        catch { /* best-effort */ }
+    }
+
+    private async Task RunDiagnostics()
+    {
+        _runningDiagnostics = true;
+        _diagnosticsResult = null;
+        try
+        {
+            var reports = await NewHttp().GetFromJsonAsync<List<RunnerHealth>>("/api/runners/health");
+            var issues = new List<string>();
+            if (reports != null)
+            {
+                foreach (var r in reports)
+                {
+                    if (!r.Available)
+                        issues.Add($"[{r.DisplayName}] {r.Error ?? L["RunnerNotDetected"]}");
+                }
+            }
+            _diagnosticsResult = new DiagnosticsResult(issues.Count == 0, issues);
+        }
+        catch
+        {
+            _diagnosticsResult = new DiagnosticsResult(false, new List<string> { "Failed to fetch runner health" });
+        }
+        finally { _runningDiagnostics = false; }
+    }
+
+    private static string GetRunnerIcon(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "🦫",
+        "claude" => "🤖",
+        _ => "⚙️"
+    };
 
     private async Task SaveWorkspace()
     {

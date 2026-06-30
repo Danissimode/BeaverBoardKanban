@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
+using KittyClaw.Core.Automation.Runners;
 
 namespace KittyClaw.Core.Automation;
 
@@ -30,6 +31,13 @@ public sealed class AgentRun
     public string? RoleId { get; set; }
     public string? ModelProfileId { get; set; }
     public string? CommandDisplay { get; set; }
+    
+    /// <summary>
+    /// Extended execution metadata (provider, model, worktree, etc.) set by the runner.
+    /// Null for runs that predate this field.
+    /// </summary>
+    public ExecutionMetadata? ExecutionMetadata { get; set; }
+    
     public AgentRunStatus Status { get; set; } = AgentRunStatus.Running;
     public DateTime? EndedAt { get; set; }
     public int? ExitCode { get; set; }
@@ -102,6 +110,11 @@ public sealed class AgentRunSnapshot
     public int? ExitCode { get; set; }
     public List<StreamEvent> Events { get; set; } = [];
     public List<string> PendingSteerMessages { get; set; } = [];
+    
+    /// <summary>
+    /// Extended execution metadata set by the runner.
+    /// </summary>
+    public ExecutionMetadata? ExecutionMetadata { get; set; }
 }
 
 /// <summary>Persists completed runs as JSON files on disk.</summary>
@@ -143,6 +156,7 @@ public sealed class RunLogStore
             ExitCode = run.ExitCode,
             Events = run.SnapshotBuffer().ToList(),
             PendingSteerMessages = run.PendingSteerMessages.ToList(),
+            ExecutionMetadata = run.ExecutionMetadata,
         };
         var path = Path.Combine(_dir, $"{run.RunId}.json");
         File.WriteAllText(path, JsonSerializer.Serialize(snapshot, s_json));
@@ -192,6 +206,7 @@ public sealed class RunLogStore
                 run.Push(ev);
             foreach (var msg in snapshot.PendingSteerMessages)
                 run.AddPendingSteerMessage(msg);
+            run.ExecutionMetadata = snapshot.ExecutionMetadata;
             yield return run;
         }
     }
@@ -257,6 +272,11 @@ public sealed class AgentRunRegistry
 
     public IEnumerable<AgentRun> AllForProject(string projectSlug) =>
         _runs.Values.Where(r => r.ProjectSlug == projectSlug);
+    
+    /// <summary>
+    /// Returns all runs currently in memory (including completed runs loaded from disk on startup).
+    /// </summary>
+    public IEnumerable<AgentRun> GetAllRuns() => _runs.Values;
 
     public bool HasActiveInGroup(string projectSlug, string concurrencyGroup) =>
         _runs.Values.Any(r => r.ProjectSlug == projectSlug && r.ConcurrencyGroup == concurrencyGroup && r.Status == AgentRunStatus.Running);

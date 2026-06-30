@@ -1,5 +1,6 @@
 @using KittyClaw.Core.Automation
 @using KittyClaw.Web.Services
+@using KittyClaw.Web.Api
 @using Markdig
 @inject AgentRunsState RunsState
 @inject IJSRuntime JS
@@ -21,7 +22,24 @@
                 <span class="agent-status agent-status-@_run.Status.ToString().ToLowerInvariant()">@_run.Status</span>
                 @if (_run.Status is AgentRunStatus.Failed or AgentRunStatus.Stopped)
                 {
-                    <button class="agent-retry-btn" @onclick="Retry" disabled="@_retrying" title="@L["RetryAgent"]">↻ @L["Retry"]</button>
+                    @if (_availableRunners.Count > 0)
+                    {
+                        <div class="agent-retry-options">
+                            @foreach (var r in _availableRunners.Where(x => x.Available))
+                            {
+                                <button class="agent-retry-runner-btn @GetRunnerClass(r.Kind)"
+                                        @onclick="() => RetryWith(r.Kind)" disabled="@_retrying"
+                                        title="@GetRetryTitle(r.Kind)">
+                                    @GetRunnerIcon(r.Kind) @GetRunnerLabel(r.Kind)
+                                </button>
+                            }
+                            <button class="agent-retry-btn" @onclick="Retry" disabled="@_retrying" title="@L["RetryAgent"]">@L["ViewLogs"]</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <button class="agent-retry-btn" @onclick="Retry" disabled="@_retrying" title="@L["RetryAgent"]">↻ @L["Retry"]</button>
+                    }
                 }
             </div>
             <div class="agent-drawer-meta">
@@ -166,6 +184,7 @@
     private ElementReference _consoleRef;
     private bool _needsInitScroll;
     private bool _needsScroll;
+    private List<DrawerRunner> _availableRunners = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -201,7 +220,19 @@
         _sseModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/agent-sse.js");
         _activeStreamId = RunId;
         _needsInitScroll = true;
+        await LoadRunnersAsync();
         StateHasChanged();
+    }
+
+    private async Task LoadRunnersAsync()
+    {
+        try
+        {
+            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            var reports = await http.GetFromJsonAsync<List<DrawerRunner>>("/api/runners/health");
+            _availableRunners = reports ?? new();
+        }
+        catch { _availableRunners = new(); }
     }
 
     private void HandleEvent(StreamEvent ev)
@@ -225,6 +256,34 @@
             try { await _sseModule.InvokeVoidAsync("disposeAutoScroll"); } catch { }
         _activeStreamId = null;
     }
+
+    private static string GetRunnerIcon(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "🦫",
+        "claude" => "🤖",
+        _ => "⚙️"
+    };
+
+    private static string GetRunnerLabel(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "↻ OpenCode",
+        "claude" => "↻ Claude",
+        _ => kind
+    };
+
+    private static string GetRetryTitle(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "Retry with OpenCode",
+        "claude" => "Retry with Claude",
+        _ => kind
+    };
+
+    private static string GetRunnerClass(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "retry-opencode",
+        "claude" => "retry-claude",
+        _ => "retry-default"
+    };
 
     private async Task OnSteerKeyDown(KeyboardEventArgs e)
     {
@@ -274,7 +333,29 @@
         finally { _retrying = false; }
     }
 
+    private async Task RetryWith(string runnerKind)
+    {
+        if (_run is null || _retrying) return;
+        _retrying = true;
+        try
+        {
+            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            var resp = await http.PostAsJsonAsync(
+                $"/api/projects/{_run.ProjectSlug}/runs/{_run.RunId}/retry",
+                new RetryRunRequest(runnerKind));
+            if (resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadFromJsonAsync<RetryResponse>();
+                if (body is not null && OnRetried.HasDelegate)
+                    await OnRetried.InvokeAsync(body.RunId);
+            }
+        }
+        catch { }
+        finally { _retrying = false; }
+    }
+
     private sealed record RetryResponse(string RunId);
+    private sealed record DrawerRunner(string Kind, string DisplayName, bool Available);
 
     private static string GetMessageBody(string? text)
     {

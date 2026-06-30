@@ -1,0 +1,50 @@
+name: Feature Request
+description: Suggest a new feature or improvement.
+title: "[Feature] "
+labels: ["feature-request"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Description
+        A clear description of the feature you'd like to see.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem or Use Case"
+      placeholder: "What problem does this solve? Who benefits?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution"
+      placeholder: "How would you solve this? Any specific ideas?"
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      placeholder: "Any other approaches you've considered?"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: "Which phase does this belong to?"
+      options:
+        - Not sure / general
+        - Execution Core (run from cards)
+        - Team Chat
+        - Evidence / Done Gate
+        - Agent Skills
+        - Token Economy
+        - IDE/API Bridge
+        - OpenCode Server integration
+        - Other

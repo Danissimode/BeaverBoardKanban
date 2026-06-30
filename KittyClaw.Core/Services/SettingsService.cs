@@ -52,6 +52,30 @@ public sealed class SettingsService
     }
 
     public string SettingsPath => _settingsPath;
+
+    /// <summary>
+    /// Synchronous load for use in middleware/filters where async is not available.
+    /// </summary>
+    public SettingsData LoadSync()
+    {
+        if (_cached is not null) return _cached;
+        _lock.Wait();
+        try
+        {
+            if (_cached is not null) return _cached;
+            if (File.Exists(_settingsPath))
+            {
+                var json = File.ReadAllText(_settingsPath);
+                _cached = JsonSerializer.Deserialize<SettingsData>(json) ?? new SettingsData();
+            }
+            else
+            {
+                _cached = new SettingsData();
+            }
+            return _cached;
+        }
+        finally { _lock.Release(); }
+    }
 }
 
 public sealed class SettingsData
@@ -68,6 +92,10 @@ public sealed class SettingsData
     public string PreferredRunner { get; set; } = "auto"; // "auto", "opencode", "claude"
     public bool SkipClaudeSetup { get; set; } = false;
     public OpenCodeConfigData OpenCode { get; set; } = new();
+    
+    // API token for IDE/integration access (SHA256 hash, never plain text)
+    public string? ApiTokenHash { get; set; }
+    public string? ApiTokenScopes { get; set; } = "read";
 }
 
 /// <summary>
@@ -79,6 +107,6 @@ public sealed class OpenCodeConfigData
     public string? ServerUrl { get; set; }
     public string? CliCommand { get; set; }
     public string? DefaultProvider { get; set; } = "openrouter";
-    public string? DefaultModel { get; set; } = "anthropic/claude-3-5-sonnet-20241022";
+    public string? DefaultModel { get; set; } = "openrouter/anthropic/claude-3-5-sonnet";
     public string? DefaultAgent { get; set; } = "build";
 }

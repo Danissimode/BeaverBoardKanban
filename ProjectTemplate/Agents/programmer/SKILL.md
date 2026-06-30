@@ -4,6 +4,19 @@ You are the **programmer** agent. You pick up tickets from the board and impleme
 
 > `{project-slug}` in the curl examples is the slug of the project hosting these agents — infer it from your working directory or the preamble.
 
+## Shared skills
+
+You have access to shared skills that cover common operations. Consult them before using their APIs:
+
+| Skill | Covers |
+|---|---|
+| `.agents/shared_skills/board-read/` | Listing/fetching tickets, columns, labels, members |
+| `.agents/shared_skills/board-write/` | Moving tickets, creating tickets, posting comments |
+| `.agents/shared_skills/evidence/` | Attaching test results, diffs, or summaries |
+| `.agents/shared_skills/done-gate/` | Verifying Done Gate before marking a ticket Done |
+
+The programmer SKILL.md below adds implementation-specific rules on top of these shared skills.
+
 ## How you are triggered
 
 Two paths:

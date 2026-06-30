@@ -8,6 +8,7 @@ using KittyClaw.Core.Services;
 using KittyClaw.Core.TeamChat;
 using KittyClaw.Web.Api;
 using KittyClaw.Web.Components;
+using KittyClaw.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,9 +99,17 @@ builder.Services.AddSingleton<IAgentPromptBuilder, PromptBuilder>();
 // Keep ClaudeRunner for backward compat (used by ClaudeCodeRuntime)
 builder.Services.AddSingleton<ClaudeRunner>();
 builder.Services.AddSingleton<CostTracker>();
+// Token budget and cost economy: estimates context size, enforces role budgets,
+// suggests fallback models, warns on large fanouts.
+builder.Services.AddSingleton<TokenBudgetService>();
+// API token authentication for IDE/integration access.
+builder.Services.AddSingleton<ApiTokenService>();
 
 // Zone A: Core extension points (generic, not OpenCode-specific)
 builder.Services.AddSingleton<ITicketExecutionMetadataStore, TicketExecutionMetadataStore>();
+// Persists ticket execution metadata (provider, model, worktree) to the metadata store
+// whenever a run completes — both automation-triggered and ad-hoc runs survive restarts.
+builder.Services.AddHostedService<TicketExecutionPersistenceService>();
 builder.Services.AddSingleton<IProviderModelCatalog, OpenCodeProviderModelCatalog>();
 builder.Services.AddSingleton<IExecutionPolicyService, OpenCodeExecutionPolicyService>();
 
@@ -132,6 +141,9 @@ builder.Services.AddSingleton<IAgentCommunicationService, AgentCommunicationServ
 // Run → TeamChat notifier: posts start/complete/fail/stop events into team chat
 builder.Services.AddSingleton<TeamChatRunNotifier>();
 
+// Auto-status updater: moves tickets to In Progress / Review / Failed on run events
+builder.Services.AddSingleton<AutoTicketStatusUpdater>();
+
 // Configure RunnerRegistry with all available runners
 builder.Services.AddSingleton<RunnerRegistry>(sp =>
 {
@@ -142,7 +154,27 @@ builder.Services.AddSingleton<RunnerRegistry>(sp =>
     registry.RegisterRunner(new ClaudeRunnerAdapter(claudeRunner));
     registry.RegisterRunner(opencodeRunner);
     
-    // Set OpenCode as default if available
+    // Respect user's saved preference first
+    var settings = sp.GetService<SettingsService>();
+    string? preferred = null;
+    try
+    {
+        var data = settings?.LoadAsync().GetAwaiter().GetResult();
+        preferred = data?.PreferredRunner;
+    }
+    catch { /* ignore settings read errors during startup */ }
+    
+    if (!string.IsNullOrEmpty(preferred) && preferred != "auto")
+    {
+        var runner = registry.GetRunner(preferred);
+        if (runner is not null && runner.IsAvailable)
+        {
+            registry.SetDefaultRunner(preferred);
+            return registry;
+        }
+    }
+    
+    // Fallback: OpenCode if available, otherwise Claude
     if (opencodeRunner.IsAvailable)
     {
         registry.SetDefaultRunner("opencode");
@@ -198,6 +230,10 @@ builder.Services.AddRazorComponents()
 
 
 var app = builder.Build();
+
+// Force instantiation of event subscribers so they wire up to AgentRunRegistry
+_ = app.Services.GetRequiredService<TeamChatRunNotifier>();
+_ = app.Services.GetRequiredService<AutoTicketStatusUpdater>();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

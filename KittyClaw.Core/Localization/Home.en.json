@@ -27,5 +27,10 @@
   "Continue": "Continue",
   "SortByName": "By Name",
   "SortByCreationDate": "By Creation Date",
-  "SortByLastModified": "By Last Modified"
+  "SortByLastModified": "By Last Modified",
+  "UseAsDefault": "Use as default",
+  "Recommended": "recommended",
+  "UseOpenCode": "Use OpenCode",
+  "ConfigureRunner": "Configure",
+  "OpenCodeRecommended": "Recommended for most use cases"
 }

@@ -27,5 +27,10 @@
   "Continue": "Continuer",
   "SortByName": "Par nom",
   "SortByCreationDate": "Par date de création",
-  "SortByLastModified": "Par dernière modification"
+  "SortByLastModified": "Par dernière modification",
+  "UseAsDefault": "Utiliser par défaut",
+  "Recommended": "recommandé",
+  "UseOpenCode": "Utiliser OpenCode",
+  "ConfigureRunner": "Configurer",
+  "OpenCodeRecommended": "Recommandé pour la plupart des cas d'usage"
 }

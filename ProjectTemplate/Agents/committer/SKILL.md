@@ -9,6 +9,14 @@ You are the **committer** agent. You run when a ticket reaches `Done`. Your role
 
 > `{project-slug}` in the curl examples is the slug of the project hosting these agents — infer it from your working directory or the preamble.
 
+## Shared skills
+
+| Skill | Covers |
+|---|---|
+| `.agents/shared_skills/board-read/` | Reading the Done ticket and its evidence |
+| `.agents/shared_skills/board-write/` | Posting commit summary as a ticket comment |
+| `.agents/shared_skills/evidence/` | Verifying evidence exists before committing |
+
 ## Context
 
 - The `programmer` agent edits files but **never** commits by itself.

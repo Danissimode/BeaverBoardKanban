@@ -2,7 +2,7 @@
 
 This document is the source of truth for what is actually implemented vs. what is planned/stub/future. Updated after each release.
 
-Last updated: 2026-06-30-2
+Last updated: 2026-06-30-5
 
 ## Status Legend
 
@@ -196,6 +196,35 @@ Last updated: 2026-06-30-2
 
 ---
 
+## Token Economy
+
+| Feature | Status | User-facing | Notes |
+|---------|--------|-------------|-------|
+| TokenBudgetService | **Done** | ✅ | Context size estimation, per-role budgets, fallback model suggestion |
+| Role budgets (planner/builder/reviewer/qa/docs) | **Done** | ✅ | Defined in `RoleBudgetConfig`; visible in Execution tab |
+| Budget indicator in Execution tab | **Done** | ✅ | Shows role, token estimate, context level, fallback model |
+| Broadcast fanout warning | **Done** | ⚠️ | Infrastructure ready; multi-target chat UI not yet implemented |
+| CostTracker integration (daily cap) | **Done** | ✅ | Already existed; integrated with TokenBudgetService |
+
+---
+
+## IDE / API Bridge
+
+| Feature | Status | User-facing | Notes |
+|---------|--------|-------------|-------|
+| API v1 base endpoints | **Done** | ✅ | All CRUD endpoints under `/api/` |
+| `/api/v1/ide/projects` | **Done** | ✅ | List accessible projects |
+| `/api/v1/ide/projects/{slug}/board` | **Done** | ✅ | Full board state (columns, tickets, labels, members) |
+| Plan import `/api/v1/ide/.../plans/import` | **Done** | ✅ | Structured plan → tickets with optional agent assignment |
+| Evidence attachment `/api/v1/ide/.../evidence` | **Done** | ✅ | Posts evidence as comment with summary/files/checks/risks |
+| Execution start `/api/v1/ide/.../execution/start` | **Done** | ✅ | Triggers agent run via RunnerRegistry |
+| Chat from IDE `/api/v1/ide/.../chat/messages` | **Done** | ✅ | Posts message to team chat |
+| API token auth (SHA256, scopes: read/write/execute/admin) | **Done** | ✅ | `ApiTokenService`; tokens managed via settings.json |
+| Local API token generation endpoint | **Done** | ✅ | `POST /api/v1/ide/.../api-token/generate` (admin scope) |
+| Example IDE config | **Future** | ❌ | Not yet included |
+
+---
+
 ## Infrastructure
 
 | Feature | Status | Notes |
@@ -205,18 +234,51 @@ Last updated: 2026-06-30-2
 | Tests: OpenCode runner | **Partial** | OpenCodeRunnerTests.cs exists |
 | Release: run.sh / run.bat | **Done** | dotnet watch wrapper |
 | tools/publish-stable.ps1 | **Partial** | Exists; not tested end-to-end |
-| GitHub Actions CI | **N/A** | Not configured yet |
+| GitHub Actions CI | **Done** | build + test + public audit + Gitleaks secrets scan |
+| Public repo audit script | **Done** | `scripts/audit-public-repo.sh` |
+| GitHub release workflow | **Done** | `.github/workflows/release.yml` |
+| PR template | **Done** | `.github/pull_request_template.md` |
+| Issue templates | **Done** | bug_report.yml, feature_request.yml |
+| SECURITY.md | **Done** | |
+| CONTRIBUTING.md | **Done** | |
+| CODE_OF_CONDUCT.md | **Done** | |
+| CHANGELOG.md | **Done** | |
+
+---
+
+## Agent Skills Pack
+
+| Feature | Status | User-facing | Notes |
+|---------|--------|-------------|-------|
+| `board-read` skill | **Done** | ⚠️ | SKILL.md + memory index; injected via preamble |
+| `board-write` skill | **Done** | ⚠️ | SKILL.md + memory index; referenced in programmer/qa/committer |
+| `team-chat` skill | **Done** | ⚠️ | SKILL.md + memory index |
+| `evidence` skill | **Done** | ⚠️ | SKILL.md + memory index; referenced in qa-tester |
+| `done-gate` skill | **Done** | ⚠️ | SKILL.md + memory index; referenced in programmer/qa-tester |
+| Shared skills discovery | **Done** | ✅ | Preamble references all 5 skills; per-agent SKILL.md includes table |
+
+### Skill contents
+
+- **`board-read`** — full curl reference for all GET endpoints (tickets, columns, labels, members, comments, evidence, runs, chat, mentions), filtering patterns, error handling
+- **`board-write`** — full curl reference for all write endpoints (move, create, update, comment, labels, sub-tickets), conditional-update patterns, strict-scope rules
+- **`team-chat`** — read/write messages, @mentions, ticket linking, broadcast, slash commands, run event patterns, coordination guidelines
+- **`evidence`** — attach test results/build logs/diffs/screenshots; `checks`/`risks` field patterns; Done Gate integration
+- **`done-gate`** — two-gate check (evidence exists + git has changes); script template; common failure table; bypass rules
+
+All skills embedded as `KittyClaw.Core.AgentsTemplate/shared_skills/*/SKILL.md` — auto-included via existing `**\SKILL.md` glob in the csproj.
 
 ---
 
 ## Known Issues
 
-1. **Board._liveProgress warning** — unused field in Board.razor (CS0649, non-blocking)
+1. ~~**Board._liveProgress warning**~~ — **Fixed** (removed unused field)
 2. **OpenCode CLI steering** — temp file approach works but OpenCode must actively poll the file; no SSE/websocket path confirmed
 3. **Automation chain guard** — in-memory only; duplicate runs possible after app restart
 4. **docs/ vs doc/** — two doc directories; `docs/` is KittyClaw-style, `doc/` is BeaverBoard-style; creates confusion
-5. **README.OpenCode.md** — root-level duplicate of `docs/OpenCode-Integration.md`
+5. ~~**README.OpenCode.md**~~ — **Fixed** (merged into docs/OpenCode-Integration.md or removed)
 6. **7 stub runtimes commented out** — Mimo, Script, Codex, GitHubCopilot, Antigravity, Vibe, Kimi — kept as commented candidates in Program.cs; not registered in DI
+7. **TicketExecutionMetadataStore.GetAsync** — path resolution is simplified; may not find metadata for projects with non-standard workspace layouts
+8. **Multi-target broadcast chat** — fanout warning infrastructure exists but multi-target UI not implemented yet
 
 ---
 

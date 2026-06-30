@@ -28,6 +28,7 @@ public static partial class Endpoints
         MapTeamChat(api);
         MapImages(api);
         MapDashboard(api);
+        app.MapIdeEndpoints();
 
         // SSE endpoint for real-time board updates across all clients
         api.MapGet("/projects/{slug}/events", async (string slug, BoardUpdateNotifier notifier, HttpContext ctx, CancellationToken ct) =>

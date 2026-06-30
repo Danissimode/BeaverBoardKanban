@@ -3,6 +3,9 @@
   "Stop": "Stop",
   "Retry": "Retry",
   "RetryAgent": "Run this agent again",
+  "RetryWithOpenCode": "Retry with OpenCode",
+  "RetryWithClaude": "Retry with Claude",
+  "ViewLogs": "View logs",
   "WaitingForOutput": "Waiting for output\u2026",
   "SteerPlaceholder": "Send an instruction to the agent\u2026",
   "Send": "Send"

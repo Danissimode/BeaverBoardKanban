@@ -1,6 +1,24 @@
+## Shared Skills
+
+Before taking any action, consult the relevant shared skill in `.agents/shared_skills/`. These are your operational reference sheets:
+
+| Skill | When to use |
+|---|---|
+| `shared_skills/board-read/` | Understanding current board state (tickets, columns, labels, members) |
+| `shared_skills/board-write/` | Moving tickets, creating tickets, posting comments, updating fields |
+| `shared_skills/team-chat/` | Coordinating with other agents, notifying the owner, posting status updates |
+| `shared_skills/evidence/` | Attaching test results, diffs, screenshots, or summaries to a ticket |
+| `shared_skills/done-gate/` | Verifying a ticket is ready for Done before marking it complete |
+
+Each skill folder contains:
+- **`SKILL.md`** — full API reference and usage patterns
+- **`memory/`** — a scored index + topic lesson files (read the index; consult topic files when relevant)
+
+**Always read the relevant skill before using its API endpoints.** The skill files are injected into your run context at startup.
+
 ## Memory
 
-Your memory lives under `.agents/{agent}/memory/`:
+Your personal memory lives under `.agents/{agent}/memory/`:
 
 - **`MEMORY.md`** — an **index**, injected automatically into this run. One scored line per topic: `[N] title — hook → topic-file.md`. `[N]` is the relevance score; higher = more proven.
 - **`<topic>.md`** — the actual lessons, grouped by subject, each with a YAML frontmatter header. These are **not** injected automatically.

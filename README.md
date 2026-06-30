@@ -7,6 +7,13 @@
 <h1 align="center">Run your AI team from <span style="color: #F97316">one board.</span></h1>
 
 <p align="center">
+  <a href="https://github.com/Danissimode/BeaverBoardKanban/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danissimode/BeaverBoardKanban/ci.yml?branch=main&label=CI" alt="CI"></a>
+  <a href="https://github.com/Danissimode/BeaverBoardKanban/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Danissimode/BeaverBoardKanban" alt="License: MIT"></a>
+  <a href="https://dotnet.microsoft.com/download/dotnet/10.0"><img src="https://img.shields.io/badge/.NET-10-purple?logo=dotnet" alt=".NET 10"></a>
+  <a href="https://github.com/Danissimode/BeaverBoardKanban/releases"><img src="https://img.shields.io/github/v/release/Danissimode/BeaverBoardKanban?include_prereleases" alt="Release"></a>
+</p>
+
+<p align="center">
   <strong>A Kanban board where your AI agents become your development team.</strong><br/>
   Connect task cards to OpenCode sessions and shared command chat.
 </p>
@@ -277,47 +284,53 @@ Tiles can be created from the dashboard's AI chat panel by describing what you w
 
 ## Project status
 
-This is an experimental open-source fork/customization. The visual branding and GitHub Pages landing are being developed first, followed by deeper OpenCode integration and agent-command workflow.
+**v0.9.0 — ready for tagging as v1.0.0.** Core execution engine, IDE/API bridge, token economy, and public repo safety are all implemented. See the full [status matrix](doc/status-matrix.md) for feature-level detail.
 
 ---
 
 ## Roadmap
 
-### Phase 1 — Branding and GitHub presentation
+### Phase 1 — Branding and GitHub presentation ✅
+- Beaver Board Kanban identity (branding/beaver-board/)
+- README rewrite with badges
+- Public repo safety audit (`.gitleaks.toml`, `scripts/audit-public-repo.sh`)
+- CI pipeline (build + test + audit + Gitleaks)
 
-- Beaver Board Kanban identity
-- README rewrite
-- GitHub Pages landing
-- Visual assets
-- Removal of obsolete KittyClaw-facing branding
+### Phase 2 — Execution Core MVP ✅
+- OpenCode runner (CLI + SSE server mode)
+- Claude runner (streaming, stop, steer)
+- AgentRunDrawer with live SSE stream
+- Ticket execution persistence (survives app restarts)
+- Done Gate (blocks Done if no git changes)
 
-### Phase 2 — Kanban UX polish
+### Phase 3 — Evidence + Done Gate ✅
+- Evidence attachment on tickets
+- Done Gate enforcement
 
-- Improved task cards
-- Developer-focused dark theme
-- Agent metadata on cards
-- Status labels and task states
+### Phase 4 — Team Chat v2 + Routing ✅
+- Team chat with @mention routing
+- Run notifier (posts run events to chat)
 
-### Phase 3 — Shared command chat
+### Phase 5 — Agent Skills Pack ✅
+- `board-read`, `board-write`, `team-chat`, `evidence`, `done-gate` skills — embedded in `ProjectTemplate/Agents/shared_skills/`, injected via preamble
 
-- Agent mentions
-- Task-linked conversations
-- Human approval flow
-- Blocker reporting
+### Phase 6 — Token Economy ✅
+- TokenBudgetService with role budgets (planner/builder/reviewer/qa/docs/supervisor)
+- Budget indicator in Execution tab
 
-### Phase 4 — OpenCode integration
+### Phase 7 — IDE/API Bridge ✅
+- v1 API (`/api/v1/ide/`) with plan import, evidence, execution, chat
+- Bearer token auth with scopes (read/write/execute/admin)
 
-- Link cards to OpenCode sessions
-- Send task context to agents
-- Receive status updates
-- Capture execution evidence
+### Phase 8 — GitHub Setup ✅
+- Bug report / feature request issue templates
+- SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md
+- Release workflow, PR template, doctor CLI
 
-### Phase 5 — Agent orchestration
-
-- Agent-driven card movement
-- PR/evidence linking
-- Multi-agent workflow
-- Optional support for other CLI executors
+### Phase 9 — Release ✅
+- `beaverboard doctor` CLI (`scripts/beaverboard-doctor.sh`)
+- Demo board (`examples/demo-board/`)
+- Ready to tag v1.0.0
 
 ---
 

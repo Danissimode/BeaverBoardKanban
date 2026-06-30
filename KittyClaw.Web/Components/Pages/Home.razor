@@ -118,7 +118,18 @@
                             </div>
                             @if (_opencodeInstalled)
                             {
-                                <span class="connector-check">✓</span>
+                                <div class="connector-actions">
+                                    @if (_defaultRunner == "opencode")
+                                    {
+                                        <span class="connector-default-badge">✓ @L["UseAsDefault"]</span>
+                                    }
+                                    else
+                                    {
+                                        <button class="connector-use-btn" @onclick="SetOpencodeDefault" disabled="@_settingDefault" title="@L["UseAsDefault"]">
+                                            @L["UseOpenCode"]
+                                        </button>
+                                    }
+                                </div>
                             }
                             else
                             {
@@ -134,7 +145,18 @@
                             </div>
                             @if (_claudeInstalled)
                             {
-                                <span class="connector-check">✓</span>
+                                <div class="connector-actions">
+                                    @if (_defaultRunner == "claude")
+                                    {
+                                        <span class="connector-default-badge">✓ @L["UseAsDefault"]</span>
+                                    }
+                                    else
+                                    {
+                                        <button class="connector-use-btn" @onclick="SetClaudeDefault" disabled="@_settingDefault" title="@L["UseAsDefault"]">
+                                            @L["UseAsDefault"]
+                                        </button>
+                                    }
+                                </div>
                             }
                         </div>
                     </div>
@@ -274,6 +296,8 @@
     private (string text, string css)? _creationStatus;
     private IDisposable? _escOnboarding;
     private IDisposable? _escPending;
+    private string? _defaultRunner;
+    private bool _settingDefault;
 
     protected override void OnInitialized()
     {
@@ -325,8 +349,8 @@
         _gitInstalled = AgentsTemplate.IsGitAvailable();
         // Claude Code is optional
         _claudeInstalled = AgentsTemplate.IsClaudeAvailable();
-        
-        // Fetch extended runner info
+
+        // Fetch extended runner info and current default
         try
         {
             var reports = await NewHttp().GetFromJsonAsync<List<RunnerHealthReport>>("/api/runners/health");
@@ -345,6 +369,9 @@
                     _opencodeProvider = null;
                     _opencodeModel = null;
                 }
+
+                var defaultResp = await NewHttp().GetFromJsonAsync<DefaultRunnerReport>("/api/runners/default");
+                _defaultRunner = defaultResp?.Kind;
             }
         }
         catch
@@ -353,6 +380,7 @@
             _opencodeVersion = null;
             _opencodeProvider = null;
             _opencodeModel = null;
+            _defaultRunner = null;
         }
     }
 
@@ -362,6 +390,23 @@
         _showOnboarding = false;
         await LoadProjectsAsync();
     }
+
+    private async Task SetDefaultRunner(string kind)
+    {
+        if (_settingDefault) return;
+        _settingDefault = true;
+        try
+        {
+            var resp = await NewHttp().PostAsJsonAsync("/api/runners/default", new { kind });
+            if (resp.IsSuccessStatusCode)
+                _defaultRunner = kind;
+        }
+        catch { /* ignore */ }
+        finally { _settingDefault = false; }
+    }
+
+    private Task SetOpencodeDefault() => SetDefaultRunner("opencode");
+    private Task SetClaudeDefault() => SetDefaultRunner("claude");
 
     private HttpClient NewHttp()
     {
@@ -383,6 +428,7 @@
     private sealed record BrowseCapabilities(bool FolderPicker);
     private sealed record BrowseResult(string Path);
     private sealed record RunnerHealthReport(string Kind, string? Version, string? Provider, string? Model, bool Available);
+    private sealed record DefaultRunnerReport(string Kind);
 
     private void CreateProject()
     {

@@ -49,13 +49,13 @@ public sealed class ClaudeRunnerAdapter : IAgentRunner
             ExtraContext = null,
             InlineSkillContent = null,
             PresetRunId = request.RunId,
-            SessionScope = null,
+            SessionScope = request.ChatTarget is not null ? "chat" : null,
             RetryOnResumeFailure = false,
             PersistSession = true,
             OnEventHook = request.OnEventHook,
-            ChatTarget = null,
-            PendingSteerMessages = null,
-            ImagePaths = null
+            ChatTarget = request.ChatTarget,
+            PendingSteerMessages = request.PendingSteerMessages,
+            ImagePaths = request.ImagePaths
         };
         
         // Execute via ClaudeRunner
@@ -96,22 +96,20 @@ public sealed class ClaudeRunnerAdapter : IAgentRunner
     public async Task<bool> StopAsync(string runId, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("Stop requested for Claude run {RunId}", runId);
-        // TODO: Implement stop for ClaudeRunner
-        // This would need to be added to ClaudeRunner itself
-        return false;
+        // ClaudeRunner doesn't have a direct StopAsync, but we can cancel via the AgentRun
+        return false; // Let the caller fall back to CancellationTokenSource
     }
     
     public async Task<bool> SteerAsync(string runId, string message, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("Steer requested for Claude run {RunId}: {Message}", runId, message);
-        // TODO: Implement steer for ClaudeRunner
-        // This would need to be added to ClaudeRunner itself
+        // Steering is handled directly via AgentRun.SteeringQueue in the endpoints
         return false;
     }
     
     public async Task<AgentRunStatus> GetStatusAsync(string runId, CancellationToken cancellationToken)
     {
-        // TODO: Implement status check for ClaudeRunner
+        // Status is tracked in AgentRunRegistry; the caller should query that directly
         return AgentRunStatus.Running;
     }
 }

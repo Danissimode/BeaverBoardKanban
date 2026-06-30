@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using KittyClaw.Core.Automation.Runners;
 
 namespace KittyClaw.Core.Automation;
 
@@ -105,6 +106,22 @@ public sealed class ClaudeRunner
         };
         if (ctx.OnEventHook is not null) run.OnEvent += ctx.OnEventHook;
         _runs.Register(run);
+        
+        // Attach ExecutionMetadata so it persists with the run log
+        run.ExecutionMetadata = new ExecutionMetadata
+        {
+            Mode = ExecutionMode.LegacyClaude.ToString(),
+            Runner = "claude",
+            Model = ctx.Model,
+            Provider = null,
+            Profile = null,
+            RunId = run.RunId,
+            SessionId = null, // set after session is created below
+            TicketId = ctx.TicketId?.ToString(),
+            ProjectId = ctx.ProjectSlug,
+            OpenCodeAgent = null,
+            SteerSupported = true,
+        };
 
         string skillContent;
         if (ctx.InlineSkillContent is not null)

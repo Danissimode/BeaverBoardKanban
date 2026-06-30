@@ -107,6 +107,12 @@ public sealed class AgentRunRequest
     /// Chat target for chat-mode runs (e.g., "owner-chat", "programmer")
     /// </summary>
     public string? ChatTarget { get; init; }
+    
+    /// <summary>
+    /// Steering messages that could not be delivered to the previous run (stdin already closed).
+    /// The runner should prepend them to the next turn's prompt so the agent receives them.
+    /// </summary>
+    public IReadOnlyList<string>? PendingSteerMessages { get; init; }
 }
 
 /// <summary>
