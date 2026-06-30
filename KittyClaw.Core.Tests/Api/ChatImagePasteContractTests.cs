@@ -104,7 +104,7 @@ public class ChatImagePasteContractTests
     [Fact]
     public void ChatDrawer_razor_installs_paste_handler_and_wires_jsinvokable_callbacks()
     {
-        var src = Read("KittyClaw.Web/Components/ClaudeChatDrawer.razor");
+        var src = Read("KittyClaw.Web/Components/ChatDrawer.razor");
         Assert.Contains("chatDrawerInstallPasteHandler", src);
         Assert.Contains("OnImagePasted", src);
         Assert.Contains("OnImagePasteError", src);

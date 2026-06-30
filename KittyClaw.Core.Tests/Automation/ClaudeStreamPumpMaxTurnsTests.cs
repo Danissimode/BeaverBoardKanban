@@ -8,7 +8,7 @@ namespace KittyClaw.Core.Tests.Automation;
 /// Integration tests for the max-turns detection in ClaudeStreamPump.
 ///
 /// Test cases 3–6 from the architect plan (Continue clicked, user types, drawer reopen,
-/// stop-then-reopen) exercise ClaudeChatDrawer — a Blazor component in KittyClaw.Web.
+/// stop-then-reopen) exercise ChatDrawer — a Blazor component in KittyClaw.Web.
 /// Testing those from Core.Tests requires bunit; they are out of scope here.
 /// </summary>
 [Collection("MockClaude")]

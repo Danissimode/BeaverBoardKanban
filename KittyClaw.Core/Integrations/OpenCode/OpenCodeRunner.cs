@@ -3,7 +3,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -210,15 +214,304 @@ public sealed class OpenCodeRunner : IAgentRunner
     }
     
     private async Task<AgentRunResult> ExecuteViaServerAsync(
-        AgentRunRequest request, 
+        AgentRunRequest request,
         AgentRun agentRun,
         ExecutionMetadata executionMetadata,
         CancellationToken cancellationToken)
     {
-        // TODO: Implement OpenCode server API integration with SSE streaming
-        _logger?.LogWarning("OpenCode server mode not yet implemented, falling back to CLI");
-        return await ExecuteViaCliAsync(request, agentRun, executionMetadata, cancellationToken);
+        var serverUrl = _config.ServerUrl!.TrimEnd('/');
+
+        // Write structured context file alongside the prompt file for OpenCode to consume
+        var workingDir = request.WorktreePath ?? request.WorkspacePath;
+        Directory.CreateDirectory(workingDir);
+        var contextFile = WriteContextFile(workingDir, agentRun.RunId, request, executionMetadata);
+
+        // Start the run via POST /api/runs
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        var startPayload = new
+        {
+            runId = agentRun.RunId,
+            provider = executionMetadata.Provider,
+            model = executionMetadata.Model,
+            agent = executionMetadata.OpenCodeAgent,
+            profile = executionMetadata.Profile,
+            workspace = workingDir,
+            maxTurns = request.MaxTurns,
+            prompt = request.Prompt,
+            contextFile = contextFile,
+            metadata = new
+            {
+                projectSlug = request.ProjectSlug,
+                ticketId = request.TicketId,
+                branchName = executionMetadata.BranchName,
+                worktreePath = executionMetadata.WorktreePath
+            }
+        };
+
+        HttpResponseMessage startResp;
+        try
+        {
+            startResp = await httpClient.PostAsJsonAsync($"{serverUrl}/api/runs", startPayload, cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger?.LogWarning(ex, "OpenCode server unreachable at {Url}, falling back to CLI", serverUrl);
+            CleanupContextFile(contextFile);
+            return await ExecuteViaCliAsync(request, agentRun, executionMetadata, cancellationToken);
+        }
+
+        if (!startResp.IsSuccessStatusCode)
+        {
+            var errBody = await startResp.Content.ReadAsStringAsync(cancellationToken);
+            _logger?.LogWarning("OpenCode server returned {Status} {Body}, falling back to CLI", startResp.StatusCode, errBody);
+            CleanupContextFile(contextFile);
+            return await ExecuteViaCliAsync(request, agentRun, executionMetadata, cancellationToken);
+        }
+
+        JsonElement startBody;
+        try
+        {
+            startBody = JsonDocument.Parse(await startResp.Content.ReadAsStringAsync(cancellationToken)).RootElement;
+        }
+        catch
+        {
+            CleanupContextFile(contextFile);
+            return await ExecuteViaCliAsync(request, agentRun, executionMetadata, cancellationToken);
+        }
+
+        var sessionId = startBody.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
+        var opencodeRunId = startBody.TryGetProperty("runId", out var rid) ? rid.GetString() ?? agentRun.RunId : agentRun.RunId;
+
+        executionMetadata.SessionId = sessionId;
+
+        // Stream events via GET /api/runs/{runId}/stream (SSE)
+        var streamUrl = $"{serverUrl}/api/runs/{opencodeRunId}/stream";
+        var stdoutBuilder = new StringBuilder();
+        var stderrBuilder = new StringBuilder();
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        try
+        {
+            await StreamServerEventsAsync(httpClient, streamUrl, agentRun, stdoutBuilder, stderrBuilder, cts.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Our internal timeout or stop — the server-side run should already be stopped
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "SSE stream error for run {RunId}", agentRun.RunId);
+        }
+
+        // Determine final status
+        var status = agentRun.Status;
+        var exitCode = status == AgentRunStatus.Completed ? 0 : 1;
+        var finishedAt = DateTimeOffset.UtcNow;
+
+        _runRegistry.Complete(agentRun.RunId, status, exitCode);
+        CleanupContextFile(contextFile);
+
+        return new AgentRunResult
+        {
+            Status = status,
+            ExitCode = exitCode,
+            Stdout = stdoutBuilder.ToString(),
+            Stderr = stderrBuilder.ToString(),
+            StartedAt = new DateTimeOffset(agentRun.StartedAt),
+            FinishedAt = finishedAt,
+            Duration = finishedAt - new DateTimeOffset(agentRun.StartedAt),
+            RunnerKind = Kind,
+            RunId = agentRun.RunId,
+            ExecutionMetadata = executionMetadata
+        };
     }
+
+    /// <summary>
+    /// Writes a structured context file that OpenCode can read to understand the run context.
+    /// </summary>
+    private string? WriteContextFile(string workingDir, string runId, AgentRunRequest request, ExecutionMetadata em)
+    {
+        try
+        {
+            var agentsDir = Path.Combine(workingDir, ".agents", "tmp");
+            Directory.CreateDirectory(agentsDir);
+            var path = Path.Combine(agentsDir, $"context-{runId}.md");
+
+            var sb = new StringBuilder();
+            sb.AppendLine("# Run Context");
+            sb.AppendLine();
+            sb.AppendLine($"- **Project**: {request.ProjectSlug}");
+            if (request.TicketId is int tid)
+                sb.AppendLine($"- **Ticket ID**: #{tid}");
+            sb.AppendLine($"- **Run ID**: `{runId}`");
+            sb.AppendLine($"- **Agent**: {em.OpenCodeAgent}");
+            sb.AppendLine($"- **Provider**: {em.Provider}");
+            sb.AppendLine($"- **Model**: {em.Model}");
+            sb.AppendLine($"- **Profile**: {em.Profile}");
+            sb.AppendLine($"- **Branch**: `{em.BranchName ?? "(default)"}`");
+            if (!string.IsNullOrEmpty(em.WorktreePath))
+                sb.AppendLine($"- **Worktree**: `{em.WorktreePath}`");
+            sb.AppendLine();
+
+            if (!string.IsNullOrEmpty(request.Prompt))
+            {
+                sb.AppendLine("## Prompt");
+                sb.AppendLine();
+                sb.AppendLine(request.Prompt);
+                sb.AppendLine();
+            }
+
+            // Include skill file path if present
+            if (!string.IsNullOrEmpty(request.SkillFile))
+            {
+                sb.AppendLine("## Skill");
+                sb.AppendLine();
+                sb.AppendLine($"Skill file: `{request.SkillFile}`");
+                sb.AppendLine();
+            }
+
+            File.WriteAllText(path, sb.ToString());
+            return path;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to write context file for run {RunId}", runId);
+            return null;
+        }
+    }
+
+    private static void CleanupContextFile(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+        try { File.Delete(path); } catch { }
+    }
+
+    /// <summary>
+    /// Reads SSE stream from OpenCode server and pushes events to AgentRun.
+    /// Falls through on network errors (run is considered complete).
+    /// </summary>
+    private async Task StreamServerEventsAsync(
+        HttpClient httpClient,
+        string streamUrl,
+        AgentRun agentRun,
+        StringBuilder stdout,
+        StringBuilder stderr,
+        CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, streamUrl);
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        req.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+
+        using var resp = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!resp.IsSuccessStatusCode) return;
+
+        using var body = await resp.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(body, Encoding.UTF8, leaveOpen: true);
+
+        while (!ct.IsCancellationRequested)
+        {
+            var line = await reader.ReadLineAsync(ct);
+            if (line is null) break;
+
+            // SSE format: "event: kind"
+            if (!line.StartsWith("event:", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var kind = line["event:".Length..].Trim();
+
+            // Read the data lines that follow
+            string? data = null;
+            while (true)
+            {
+                var nextLine = await reader.ReadLineAsync(ct);
+                if (nextLine is null) break; // EOF
+                if (nextLine == "") break; // blank line separates events
+                if (nextLine.StartsWith("event:", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Next event started — re-read it in the outer loop by not consuming
+                    break;
+                }
+                if (nextLine.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    data = nextLine["data:".Length..].Trim();
+                }
+            }
+
+            if (string.IsNullOrEmpty(data)) continue;
+
+            var ev = ParseServerEvent(kind, data);
+            if (ev is not null)
+            {
+                agentRun.Push(ev);
+
+                // Accumulate stdout/stderr
+                if (ev.Kind == "stdout")
+                    stdout.AppendLine(ev.Text);
+                else if (ev.Kind == "stderr")
+                    stderr.AppendLine(ev.Text);
+
+                // Mark run as complete on terminal events
+                if (ev.Kind is "completed" or "error" or "stopped")
+                {
+                    if (ev.Kind == "error")
+                        _runRegistry.Complete(agentRun.RunId, AgentRunStatus.Failed, 1);
+                    else if (ev.Kind == "stopped")
+                        _runRegistry.Complete(agentRun.RunId, AgentRunStatus.Stopped, null);
+                    else
+                        _runRegistry.Complete(agentRun.RunId, AgentRunStatus.Completed, 0);
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Parse an SSE data payload into a StreamEvent. Returns null for unrecognised events.
+    /// </summary>
+    private static StreamEvent? ParseServerEvent(string kind, string data)
+    {
+        try
+        {
+            return kind.ToLowerInvariant() switch
+            {
+                "assistant" or "message" => new StreamEvent(DateTime.UtcNow, "assistant", data),
+                "tool_use" => ExtractToolUse(data),
+                "tool_result" => new StreamEvent(DateTime.UtcNow, "tool_result", data),
+                "stdout" => new StreamEvent(DateTime.UtcNow, "stdout", data),
+                "stderr" => new StreamEvent(DateTime.UtcNow, "stderr", data),
+                "error" => new StreamEvent(DateTime.UtcNow, "error", data),
+                "max_turns" => new StreamEvent(DateTime.UtcNow, "max_turns", data),
+                "ask_user_question" => new StreamEvent(DateTime.UtcNow, "ask_user_question", data),
+                "completed" => new StreamEvent(DateTime.UtcNow, "completed", data),
+                "stopped" => new StreamEvent(DateTime.UtcNow, "stopped", data),
+                "info" or "debug" => null, // noise — skip
+                _ => new StreamEvent(DateTime.UtcNow, kind, data)
+            };
+        }
+        catch
+        {
+            return new StreamEvent(DateTime.UtcNow, kind, data);
+        }
+    }
+
+    private static StreamEvent ExtractToolUse(string data)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(data);
+            var root = doc.RootElement;
+            var name = root.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "tool";
+            return new StreamEvent(DateTime.UtcNow, "tool_use", name, data);
+        }
+        catch
+        {
+            return new StreamEvent(DateTime.UtcNow, "tool_use", "tool", data);
+        }
+    }
+
+    // Extended StreamEvent that carries an optional Detail string
+    private static StreamEvent CreateStreamEvent(string kind, string text, string? detail = null) =>
+        new(DateTime.UtcNow, kind, text, detail ?? text);
     
     private async Task<AgentRunResult> ExecuteViaCliAsync(
         AgentRunRequest request, 

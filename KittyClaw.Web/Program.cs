@@ -129,6 +129,9 @@ builder.Services.AddSingleton<IAgentChatSignalFilter, AgentChatSignalFilter>();
 builder.Services.AddSingleton<IAgentChatPolicyService>(sp => new AgentChatPolicyService(dataDir));
 builder.Services.AddSingleton<IAgentCommunicationService, AgentCommunicationService>();
 
+// Run → TeamChat notifier: posts start/complete/fail/stop events into team chat
+builder.Services.AddSingleton<TeamChatRunNotifier>();
+
 // Configure RunnerRegistry with all available runners
 builder.Services.AddSingleton<RunnerRegistry>(sp =>
 {
@@ -183,13 +186,6 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyMethod()
             .AllowAnyHeader();
-    });
-    
-    // AllowAll is kept only for health/doctor endpoints that need zero-CORS.
-    // All other endpoints must use "LocalOnly".
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
 
@@ -262,12 +258,12 @@ app.MapGet("/api/health", (HttpContext ctx) =>
     try
     {
         var ddOk = Directory.Exists(dataDir) || Directory.CreateDirectory(dataDir) != null;
-        checks.Add(new { name = "dataDir", status = ddOk ? "ok" : "error", detail = dataDir });
+        checks.Add(new { name = "dataDir", status = ddOk ? "ok" : "error", detail = new { writable = ddOk, pathKind = "default" } });
         if (!ddOk) allOk = false;
     }
-    catch (Exception ex)
+    catch
     {
-        checks.Add(new { name = "dataDir", status = "error", detail = ex.Message });
+        checks.Add(new { name = "dataDir", status = "error", detail = new { writable = false, error = "access-denied" } });
         allOk = false;
     }
     
@@ -277,11 +273,11 @@ app.MapGet("/api/health", (HttpContext ctx) =>
         var testFile = Path.Combine(uploadsDir, ".health-check");
         File.WriteAllText(testFile, "ok");
         File.Delete(testFile);
-        checks.Add(new { name = "uploads", status = "ok", detail = uploadsDir });
+        checks.Add(new { name = "uploads", status = "ok", detail = new { writable = true } });
     }
-    catch (Exception ex)
+    catch
     {
-        checks.Add(new { name = "uploads", status = "error", detail = ex.Message });
+        checks.Add(new { name = "uploads", status = "error", detail = new { writable = false, error = "access-denied" } });
         allOk = false;
     }
     

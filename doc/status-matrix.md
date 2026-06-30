@@ -2,7 +2,7 @@
 
 This document is the source of truth for what is actually implemented vs. what is planned/stub/future. Updated after each release.
 
-Last updated: 2026-06-30
+Last updated: 2026-06-30-2
 
 ## Status Legend
 
@@ -62,17 +62,18 @@ Last updated: 2026-06-30
 | Runner | Status | User-facing | Notes |
 |--------|--------|-------------|-------|
 | ClaudeRunner (claude CLI) | **Done** | ✅ | Full streaming, stop, steer, max_turns, ask_user_question |
-| OpenCodeRunner | **Partial** | ✅ | CLI mode works; server mode falls back to CLI; steering via temp file; prompt as inline arg |
+| OpenCodeRunner | **Partial** | ✅ | CLI mode works; server mode falls back to CLI; steering via temp file; prompt via `--prompt-file` temp file; respects explicit runner override |
+| Chat v2 runner override | **Done** | ✅ | `req.Runner` field now respected by v2; falls back to default if unavailable |
 | RunnerRegistry | **Done** | ✅ | Abstraction over runners; default selection |
 | RunnerAvailabilityChecker | **Done** | ✅ | Detects which runners are installed |
 | ClaudeCodeRuntime | **Done** | ⚠️ | Registered but internal |
-| MimoCodeRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
-| ScriptRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
-| CodexRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
-| GitHubCopilotRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
-| AntigravityRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
-| VibeRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
-| KimiCodeRuntime | **Stub** | ❌ | Registered in DI, no real implementation |
+| MimoCodeRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
+| ScriptRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
+| CodexRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
+| GitHubCopilotRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
+| AntigravityRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
+| VibeRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
+| KimiCodeRuntime | **Stub** | ❌ | Commented out in Program.cs; no real implementation |
 
 ---
 
@@ -104,6 +105,8 @@ Last updated: 2026-06-30
 | TeamCommandRouter | **Done** | ✅ | Routes commands to agents |
 | AgentChatPolicyService | **Partial** | ⚠️ | Registered; policy enforcement not fully wired |
 | Persistent chat across runs | **Done** | ✅ | ChatService backed by SQLite |
+| TeamChatRunNotifier | **Done** | ✅ | Subscribes to AgentRunRegistry events; posts ai-activity messages (start/complete/fail/stop) to team chat |
+| /chat/start v1 deprecated | **Done** | ✅ | v1 proxies to v2; returns X-Chat-Deprecation header |
 
 ---
 
@@ -111,11 +114,11 @@ Last updated: 2026-06-30
 
 | Feature | Status | User-facing | Notes |
 |---------|--------|-------------|-------|
-| CORS: LocalOnly whitelist | **Done** | ✅ | localhost + 127.0.0.1 only |
+| CORS: LocalOnly whitelist | **Done** | ✅ | localhost + 127.0.0.1 only; AllowAll policy removed |
 | executePowerShell off-by-default | **Done** | ✅ | `EnabledByDefault: false` in ActionSpec |
-| Security banner (local-only warning) | **Done** | ✅ | Dismissable; persisted in settings |
+| Security banner (local-only warning) | **Done** | ✅ | `SecurityBanner.razor`; dismissable; persisted in settings |
 | Public repo safety guide | **Done** | ✅ | `docs/public-repo-safety.md` |
-| Health endpoint | **Done** | ✅ | `GET /api/health` — no sensitive data |
+| Health endpoint | **Done** | ✅ | `GET /api/health` — paths redacted; returns `{writable, pathKind}` |
 | Secrets scanning | **N/A** | — | No CI configured yet |
 | Dashboard script execution | **Partial** | ⚠️ | DashboardScriptRunner exists; no policy gate |
 
@@ -179,7 +182,7 @@ Last updated: 2026-06-30
 | doc/automation-engine.md | **Done** | Covers triggers, conditions, actions |
 | doc/dashboard.md | **Done** | Tile types, creation flow |
 | doc/kanban-ui.md | **Partial** | Needs updates post UI redesign |
-| doc/storage.md | **Partial** | Still mentions KittyClaw paths |
+| doc/storage.md | **Done** | Updated with BeaverBoard path; mentions BEAVERBOARD_DATA_DIR |
 | doc/project-template.md | **Done** | Accurate |
 | doc/worktree-workflow.md | **Done** | |
 | doc/rest-api.md | **Done** | Accurate |
@@ -213,7 +216,7 @@ Last updated: 2026-06-30
 3. **Automation chain guard** — in-memory only; duplicate runs possible after app restart
 4. **docs/ vs doc/** — two doc directories; `docs/` is KittyClaw-style, `doc/` is BeaverBoard-style; creates confusion
 5. **README.OpenCode.md** — root-level duplicate of `docs/OpenCode-Integration.md`
-6. **8 stub runtimes registered** — Mimo, Script, Codex, GitHubCopilot, Antigravity, Vibe, Kimi — registered in DI but non-functional
+6. **7 stub runtimes commented out** — Mimo, Script, Codex, GitHubCopilot, Antigravity, Vibe, Kimi — kept as commented candidates in Program.cs; not registered in DI
 
 ---
 

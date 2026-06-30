@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -125,10 +127,14 @@ public sealed class OpenCodeExecutionPolicyService : IExecutionPolicyService
                 
                 if (_config.DoneGate.RequireLightweightChecks)
                 {
-                    // TODO: Implement lightweight checks
-                    return PolicyDecision.Deny(
-                        "Done gate: lightweight checks not yet implemented",
-                        "Wait for implementation");
+                    // Verify the worktree has actual git changes — the agent must have modified files
+                    var hasChanges = await CheckWorktreeHasChangesAsync(executionMetadata?.WorktreePath, cancellationToken);
+                    if (!hasChanges)
+                    {
+                        return PolicyDecision.Deny(
+                            "Done gate: no file changes detected in worktree",
+                            "Ensure the agent modified files before marking Done");
+                    }
                 }
             }
         }
@@ -146,7 +152,50 @@ public sealed class OpenCodeExecutionPolicyService : IExecutionPolicyService
         
         return PolicyDecision.Allow();
     }
-    
+
+    /// <summary>
+    /// Checks whether the worktree has any uncommitted file changes.
+    /// Returns true if there are changes, false if the worktree is clean or inaccessible.
+    /// </summary>
+    private async Task<bool> CheckWorktreeHasChangesAsync(string? worktreePath, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(worktreePath) || !Directory.Exists(worktreePath))
+        {
+            _logger?.LogDebug("LightweightChecks: no worktree path or directory not found");
+            return true; // permissive: can't check, so allow
+        }
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "diff --stat HEAD",
+                WorkingDirectory = worktreePath,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var proc = Process.Start(psi);
+            if (proc is null) return true;
+
+            await proc.WaitForExitAsync(ct);
+            var output = await proc.StandardOutput.ReadToEndAsync();
+
+            // git diff --stat outputs "X files changed" when there are changes, empty when clean
+            var hasChanges = !string.IsNullOrWhiteSpace(output) && proc.ExitCode == 0;
+            _logger?.LogDebug("LightweightChecks: worktree={Path} changes={HasChanges}", worktreePath, hasChanges);
+            return hasChanges;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "LightweightChecks: failed to check git diff for {Path}", worktreePath);
+            return true; // permissive on error
+        }
+    }
+
     public async Task<bool> IsWorktreeRequiredAsync(
         string projectSlug, 
         int ticketId, 
@@ -293,7 +342,7 @@ public sealed class DoneGatePolicy
     public bool RequireForDirectOpenCode { get; set; } = false;
     public bool RequireForCaoGoverned { get; set; } = true;
     public bool RequireSummary { get; set; } = true;
-    public bool RequireLightweightChecks { get; set; } = false;
+    public bool RequireLightweightChecks { get; set; } = true;
     public bool RequireCaoCloseout { get; set; } = true;
 }
 

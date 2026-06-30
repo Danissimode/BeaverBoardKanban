@@ -66,205 +66,52 @@ public static partial class Endpoints
             return Results.NoContent();
         }).WithTags("Chat");
 
-        api.MapPost("/projects/{slug}/chat/start", async (string slug, ChatStartRequest req, ProjectService ps, MemberService ms, ChatService cs, TicketService ts, ClaudeRunner runner, SessionRegistry sessions, AgentRunRegistry runReg, HttpContext http) =>
+        // v1 — DEPRECATED. Delegates to /chat/start-v2 internals with "claude" as default runner.
+        // The old ClaudeRunner-only path is no longer maintained; use /chat/start-v2 directly.
+        api.MapPost("/projects/{slug}/chat/start", async (
+            string slug,
+            ChatStartRequest req,
+            ProjectService ps,
+            MemberService ms,
+            ChatService cs,
+            TicketService ts,
+            RunnerRegistry registry,
+            AgentRunRegistry runReg,
+            HttpContext http) =>
         {
-            var project = await ps.GetProjectAsync(slug);
-            if (project is null) return Results.NotFound();
-
-            var target = string.IsNullOrWhiteSpace(req.Target) ? "owner-chat" : req.Target;
-            var runId = Guid.NewGuid().ToString("N");
-            var workspacePath = ps.ResolveWorkspacePath(project);
-
-            // A ticket-scoped chat target looks like "{agent}#ticket-{id}". The hash-suffix
-            // namespaces ChatService rows so each ticket has its own thread with the agent.
-            // We pass the parsed ticketId to ClaudeRunContext.TicketId so the underlying
-            // claude session is also per-ticket (session key "chat:{agent}:{ticketId}").
-            var (baseAgent, parsedTicketId) = ParseChatTarget(target);
-            var effectiveTicketId = req.TicketId ?? parsedTicketId;
-
-            // Drain undelivered steer messages from the most recent completed run for this chat target.
-            // Drain (not read) so they are not replayed on subsequent turns.
-            var pendingSteerMessages = runReg.LastCompletedForChatTarget(slug, target)?.DrainPendingSteerMessages();
-
-            if (req.ForceNew)
-            {
-                await cs.ClearAsync(slug, target);
-                sessions.Clear(workspacePath, $"chat:{baseAgent}", effectiveTicketId);
-            }
-
-            // Image paste validation (#115). Enforce MIME allow-list, per-image size cap,
-            // and per-turn count cap server-side regardless of what the JS sent.
-            var (imagePaths, imageError) = await PersistChatImagesAsync(req.Images, workspacePath, runId);
-            if (imageError is not null)
-                return Results.BadRequest(new { error = "image_rejected", reason = imageError });
-
-            await cs.AppendAsync(slug, target, "user", req.Message);
-
-            // Build ticket-context block when this chat is scoped to a ticket.
-            string? ticketContext = null;
-            if (effectiveTicketId is int tid)
-            {
-                var ticket = await ts.GetTicketAsync(slug, tid);
-                if (ticket is not null)
-                {
-                    var tb = new StringBuilder();
-                    tb.AppendLine($"## Current ticket: #{ticket.Id} — {ticket.Title}");
-                    tb.AppendLine();
-                    tb.AppendLine($"- Status: `{ticket.Status}`");
-                    tb.AppendLine($"- Priority: `{ticket.Priority}`");
-                    if (!string.IsNullOrWhiteSpace(ticket.AssignedTo))
-                        tb.AppendLine($"- Assigned to: `{ticket.AssignedTo}`");
-                    if (ticket.ParentId is int pid)
-                        tb.AppendLine($"- Parent ticket: #{pid}");
-                    if (ticket.Labels.Count > 0)
-                        tb.AppendLine($"- Labels: {string.Join(", ", ticket.Labels.Select(l => l.Name))}");
-                    tb.AppendLine();
-                    tb.AppendLine("### Description");
-                    tb.AppendLine(string.IsNullOrWhiteSpace(ticket.Description) ? "_(empty)_" : ticket.Description);
-                    if (ticket.Comments.Count > 0)
-                    {
-                        tb.AppendLine();
-                        tb.AppendLine("### Comments");
-                        foreach (var c in ticket.Comments.OrderBy(c => c.CreatedAt))
-                            tb.AppendLine($"- **{c.Author}** ({c.CreatedAt:g}): {c.Content}");
-                    }
-                    if (ticket.SubTickets.Count > 0)
-                    {
-                        tb.AppendLine();
-                        tb.AppendLine("### Sub-tickets");
-                        foreach (var st in ticket.SubTickets)
-                            tb.AppendLine($"- #{st.Id} [{st.Status}] {st.Title}");
-                    }
-                    ticketContext = tb.ToString();
-                }
-            }
-
-            ClaudeRunContext ctx;
-            if (target == "owner-chat")
-            {
-                var sb = new StringBuilder();
-                sb.AppendLine("# Context");
-                sb.AppendLine();
-                sb.AppendLine("You are an AI assistant embedded in the **Beaver Board Kanban** application — a Blazor Server kanban board that orchestrates agentic Claude workflows.");
-                sb.AppendLine($"The owner is currently viewing the project **{project.Name}** (slug: `{slug}`).");
-                sb.AppendLine($"Project workspace: `{workspacePath}`");
-                sb.AppendLine();
-                sb.AppendLine("Respond concisely and helpfully. You can read and modify files in the workspace, create tickets via the API, or give advice.");
-                sb.AppendLine();
-
-                var claudeMd = Path.Combine(workspacePath, "CLAUDE.md");
-                if (File.Exists(claudeMd))
-                {
-                    sb.AppendLine("## CLAUDE.md");
-                    sb.AppendLine();
-                    sb.AppendLine(await File.ReadAllTextAsync(claudeMd));
-                    sb.AppendLine();
-                }
-
-                var baseUrl = $"{http.Request.Scheme}://{http.Request.Host}";
-                sb.AppendLine("## Beaver Board App API");
-                sb.AppendLine();
-                sb.AppendLine($"Base URL: `{baseUrl}`");
-                sb.AppendLine($"Current project slug: `{slug}`");
-                sb.AppendLine();
-                sb.AppendLine("Key endpoints:");
-                sb.AppendLine($"- GET  {baseUrl}/api/projects/{slug}/tickets — list tickets");
-                sb.AppendLine($"- POST {baseUrl}/api/projects/{slug}/tickets — create ticket (body: {{title, createdBy, status, description, priority}})");
-                sb.AppendLine($"- GET  {baseUrl}/api/projects/{slug}/tickets/{{id}} — get ticket");
-                sb.AppendLine($"- POST {baseUrl}/api/projects/{slug}/tickets/{{id}}/comments — add comment (body: {{content, author}})");
-                sb.AppendLine($"- PATCH {baseUrl}/api/projects/{slug}/tickets/{{id}}/status — move ticket (body: {{status, author}})");
-                sb.AppendLine($"- GET  {baseUrl}/api/projects/{slug}/columns — list columns");
-                sb.AppendLine($"- Full API doc: {baseUrl}/api/docs");
-
-                ctx = new ClaudeRunContext
-                {
-                    ProjectSlug = slug,
-                    WorkspacePath = workspacePath,
-                    AgentName = "owner-chat",
-                    SkillFile = "chat",
-                    InlineSkillContent = ticketContext is null ? sb.ToString() : sb.ToString() + "\n" + ticketContext,
-                    ExtraContext = req.Message,
-                    MaxTurns = 20,
-                    ConcurrencyGroup = $"chat:{slug}:{target}",
-                    PresetRunId = runId,
-                    SessionScope = "chat",
-                    TicketId = effectiveTicketId,
-                    RetryOnResumeFailure = true,
-                    OnEventHook = ev => PersistChatEvent(cs, slug, target, ev),
-                    ChatTarget = target,
-                    PendingSteerMessages = pendingSteerMessages,
-                    ImagePaths = imagePaths,
-                };
-            }
-            else
-            {
-                var member = (await ms.ListMembersAsync(slug)).FirstOrDefault(m => m.Slug == baseAgent);
-                var memberName = member?.Name ?? baseAgent;
-
-                var skillPath = Path.Combine(workspacePath, ".agents", baseAgent, "SKILL.md");
-                var hasSkillFile = File.Exists(skillPath);
-
-                // Chat mode preamble overrides the automation-style instructions a SKILL.md
-                // typically carries (e.g. "the brief lives in ticket comments"). In a live
-                // chat the owner's request is in the user turn, not on the ticket — say so
-                // explicitly so the agent doesn't go fishing for missing comments.
-                var chatPreamble = new StringBuilder();
-                chatPreamble.AppendLine("# Interactive chat mode");
-                chatPreamble.AppendLine();
-                chatPreamble.AppendLine($"You are **{memberName}**, talking live with the owner through an in-app chat — NOT running an automation.");
-                chatPreamble.AppendLine();
-                chatPreamble.AppendLine("Rules for this mode:");
-                chatPreamble.AppendLine("- The owner's request is the **user message in this conversation**. Act on it directly.");
-                chatPreamble.AppendLine("- Do NOT ask the owner to post their request as a ticket comment — they are speaking to you here.");
-                chatPreamble.AppendLine("- Do NOT search ticket comments for instructions; treat the chat itself as the source of truth.");
-                chatPreamble.AppendLine("- Respond conversationally and concisely. Use tools (Bash, Edit, etc.) when the owner asks you to perform an action.");
-                if (ticketContext is not null)
-                    chatPreamble.AppendLine($"- The current ticket below is the topic of this thread. Modify it via the API (PATCH `/api/projects/{slug}/tickets/{effectiveTicketId}`) or other tools when asked.");
-                chatPreamble.AppendLine();
-
-                // The chat-mode preamble applies to every chat session (ticket-scoped or not).
-                // SKILL.md, when present, is appended after the preamble as background context
-                // about the agent's specialty — not as operational instructions.
-                var skillSection = "";
-                if (hasSkillFile)
-                {
-                    var skillText = await File.ReadAllTextAsync(skillPath);
-                    skillSection = "\n## Background — your specialty (from SKILL.md)\n\n" + skillText + "\n";
-                }
-                else
-                {
-                    skillSection = $"\nYou are {memberName}, an LLM member of project {project.Name}.\n";
-                }
-                var inlineContent = chatPreamble.ToString() + skillSection + (ticketContext is null ? "" : "\n" + ticketContext);
-
-                ctx = new ClaudeRunContext
-                {
-                    ProjectSlug = slug,
-                    WorkspacePath = workspacePath,
-                    AgentName = baseAgent,
-                    SkillFile = hasSkillFile ? $"{baseAgent}/SKILL.md" : "(inline)",
-                    InlineSkillContent = inlineContent,
-                    ExtraContext = req.Message,
-                    MaxTurns = 20,
-                    ConcurrencyGroup = $"chat:{slug}:{target}",
-                    PresetRunId = runId,
-                    SessionScope = "chat",
-                    TicketId = effectiveTicketId,
-                    RetryOnResumeFailure = true,
-                    OnEventHook = ev => PersistChatEvent(cs, slug, target, ev),
-                    ChatTarget = target,
-                    PendingSteerMessages = pendingSteerMessages,
-                    ImagePaths = imagePaths,
-                };
-            }
-
-            _ = runner.RunAsync(ctx, CancellationToken.None);
-            return Results.Ok(new { runId });
+            http.Response.Headers.Append("X-Chat-Version", "2");
+            // Route to v2 internals: force "claude" runner if none specified
+            var v2Req = req with { Runner = req.Runner ?? "claude" };
+            return await StartChatV2Async(slug, v2Req, ps, ms, cs, ts, registry, runReg, http);
         }).WithTags("Chat");
 
-        // Alternative chat endpoint that uses RunnerRegistry instead of hardcoded ClaudeRunner.
-        // This enables OpenCode or other runners for chat based on configuration.
-        api.MapPost("/projects/{slug}/chat/start-v2", async (string slug, ChatStartRequest req, ProjectService ps, MemberService ms, ChatService cs, TicketService ts, RunnerRegistry registry, AgentRunRegistry runReg, HttpContext http) =>
+        // v2 — PRIMARY. Uses RunnerRegistry with explicit runner override.
+        // Supports: claude, opencode, or any registered runner via the "runner" field.
+        api.MapPost("/projects/{slug}/chat/start-v2", async (
+            string slug,
+            ChatStartRequest req,
+            ProjectService ps,
+            MemberService ms,
+            ChatService cs,
+            TicketService ts,
+            RunnerRegistry registry,
+            AgentRunRegistry runReg,
+            HttpContext http) =>
+        {
+            return await StartChatV2Async(slug, req, ps, ms, cs, ts, registry, runReg, http);
+        }).WithTags("Chat");
+
+        // Shared implementation for both v1 and v2
+        static async Task<IResult> StartChatV2Async(
+            string slug,
+            ChatStartRequest req,
+            ProjectService ps,
+            MemberService ms,
+            ChatService cs,
+            TicketService ts,
+            RunnerRegistry registry,
+            AgentRunRegistry runReg,
+            HttpContext http)
         {
             var project = await ps.GetProjectAsync(slug);
             if (project is null) return Results.NotFound();
@@ -309,8 +156,8 @@ public static partial class Endpoints
                 prompt = ticketContext + "\n\n## User Message\n\n" + req.Message;
             }
 
-            // Resolve runner via registry
-            var runner = registry.ResolveRunner(ExecutionMode.DirectOpenCode);
+            // Resolve runner: explicit choice from UI → registry kind → mode fallback → default
+            var runner = registry.ResolveRunner(req.Runner, ExecutionMode.DirectOpenCode);
             if (runner is null || !runner.IsAvailable)
             {
                 runner = registry.GetDefaultRunner();
@@ -346,8 +193,10 @@ public static partial class Endpoints
 
             _ = runner.StartAsync(request, CancellationToken.None);
             return Results.Ok(new { runId, runner = runner.Kind });
-        }).WithTags("Chat");
-    }
+        }
+    } // end MapChat
+
+    // Helper methods — class-level (MapChat is a void instance method, static helpers must be outside it)
     
     /// <summary>
     /// Builds a ticket context string for chat

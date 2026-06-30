@@ -41,7 +41,7 @@ public static partial class Endpoints
                 await ctx.Response.WriteAsync($"data: {{\"type\":\"board-update\",\"slug\":\"{updatedSlug}\"}}\n\n");
                 await ctx.Response.Body.FlushAsync();
             }
-        }).WithTags("Board").Produces(StatusCodes.Status200OK).RequireCors("AllowAll");
+        }).WithTags("Board").Produces(StatusCodes.Status200OK).RequireCors("LocalOnly");
 
         // Settings endpoints
         api.MapGet("/settings", async (SettingsService svc) => Results.Ok(await svc.LoadAsync())).WithTags("Settings");

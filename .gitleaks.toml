@@ -1,0 +1,12 @@
+[extend]
+use_default = true
+
+# BeaverBoard-specific paths that may legitimately contain test/mock API keys
+[[rules.allowlist]]
+description = "Allow test/mock API key patterns in test files"
+path = "(KittyClaw\\.Core\\.Tests|KittyClaw\\.ClaudeMock|test|mock|fixture|fixture)"
+
+# Allow known safe patterns
+[[rules.allowlist]]
+description = "Allow placeholder patterns"
+regex = "(placeholder|test-key|mock-key|REPLACE_ME|FILL_IN|YOUR_KEY|xxx)"

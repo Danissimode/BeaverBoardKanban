@@ -15,7 +15,7 @@
 | Runner availability checker | ✅ Готово | `RunnerAvailabilityChecker.cs` |
 | Live streaming console drawer | ✅ Готово | `AgentRunDrawer.razor` |
 | Basic runner badges на карточках | ✅ Готово | `execution-badges`, `exec-badge--running` |
-| Basic chat drawer | ✅ Готово | `ClaudeChatDrawer.razor` (но hardcoded к Claude) |
+| Basic chat drawer | ✅ Готово | `ChatDrawer.razor` |
 | Basic TeamChat dock | ✅ Готово | `TeamChatDock.razor` |
 | Basic onboarding с runner detection | ✅ Готово | `Home.razor:82-162` |
 
@@ -85,7 +85,7 @@
 ## PR #3 — Chat Drawer Multi-Runner (Sprint 2)
 
 **Files:**
-- `KittyClaw.Web/Components/ClaudeChatDrawer.razor` — rename в `ChatDrawer.razor`
+- `KittyClaw.Web/Components/ClaudeChatDrawer.razor` → `ChatDrawer.razor` ✅ Done
 - `KittyClaw.Web/Api/Endpoints.Chat.cs` — добавить runner selection в API
 
 **Changes:**
@@ -337,7 +337,7 @@ PR #6 (Sprint 3) — Mobile Responsive
 
 ## Проверка гипотез
 
-1. **Chat drawer hardcoded к Claude?** → Да, `ClaudeChatDrawer.razor` вызывает `/api/chat/start` без runner selection. Нужен API endpoint и UI.
+1. **Chat drawer hardcoded к Claude?** → Нет, UI уже использует `/chat/start-v2` с runner selector ✅
 2. **TeamChat не получает AI events?** → Да, `TeamChatDock` только poll'ит вручную. Нужен push из `AutomationEngine`.
 3. **Нет toast system?** → Да, nowhere in codebase. Нужен новый сервис.
 4. **Mobile responsive?** → Нет медиа-запросов в CSS. Board = single column на всех размерах.
