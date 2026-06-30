@@ -1,0 +1,112 @@
+@using KittyClaw.Web.Services
+@inject RunnerStatusState RunnerStatus
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+@if (_show)
+{
+    <div class="runner-status-bar">
+        <div class="runner-status-bar-inner">
+            <span class="runner-status-label">Runners:</span>
+            @foreach (var runner in RunnerStatus.Runners)
+            {
+                <button class="runner-status-badge @(runner.IsAvailable ? "available" : "unavailable")"
+                        style="--runner-color: @GetRunnerColor(runner.Kind)"
+                        @onclick="() => OnRunnerClick(runner)"
+                        title="@GetRunnerTooltip(runner)">
+                    <span class="runner-status-icon">@GetRunnerIcon(runner.Kind)</span>
+                    <span class="runner-status-name">@runner.DisplayName</span>
+                    @if (runner.IsAvailable)
+                    {
+                        <span class="runner-status-dot available"></span>
+                    }
+                    else
+                    {
+                        <span class="runner-status-dot unavailable"></span>
+                    }
+                </button>
+            }
+            
+            <div class="runner-status-spacer"></div>
+            
+            <button class="runner-status-refresh" @onclick="Refresh" title="Refresh status">
+                <span class="@(_refreshing ? "spinning" : "")">⟳</span>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _show;
+    private bool _refreshing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        RunnerStatus.OnChange += OnStateChanged;
+        
+        // Show status bar when there's an active project or on home page
+        var uri = Nav.Uri;
+        _show = true; // Always show for now, could be scoped to project pages
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        _refreshing = true;
+        StateHasChanged();
+        
+        try
+        {
+            await RunnerStatus.RefreshAsync(force: true);
+        }
+        finally
+        {
+            _refreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRunnerClick(RunnerStatusInfo runner)
+    {
+        // Could open a settings dropdown or health details
+        // For now, just refresh
+    }
+
+    private static string GetRunnerColor(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "#3B82F6", // Blue
+        "claude" => "#F97316",   // Orange
+        "cao" => "#8B5CF6",      // Purple
+        "team" => "#22C55E",     // Green
+        "manual" => "#6B7280",   // Gray
+        _ => "#6B7280"
+    };
+
+    private static string GetRunnerIcon(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "🦫",
+        "claude" => "🤖",
+        "cao" => "🎛️",
+        "team" => "👥",
+        "manual" => "⚪",
+        _ => "⚙️"
+    };
+
+    private static string GetRunnerTooltip(RunnerStatusInfo runner)
+    {
+        var status = runner.IsAvailable ? "Ready" : "Unavailable";
+        var version = runner.Version is not null ? $" · v{runner.Version}" : "";
+        var error = runner.Error is not null ? $" · {runner.Error}" : "";
+        return $"{runner.DisplayName}: {status}{version}{error}";
+    }
+
+    public void Dispose()
+    {
+        RunnerStatus.OnChange -= OnStateChanged;
+    }
+}

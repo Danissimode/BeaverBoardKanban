@@ -17,7 +17,7 @@ public static partial class Endpoints
             Results.Ok(reg.ActiveForProject(slug).Select(r => new
             {
                 r.RunId, r.AgentName, r.SkillFile, r.TicketId, r.ConcurrencyGroup,
-                r.StartedAt, r.SessionId, status = r.Status.ToString(),
+                r.StartedAt, r.SessionId, r.RunnerKind, status = r.Status.ToString(),
             })))
             .WithTags("Runs");
 
@@ -106,7 +106,7 @@ public static partial class Endpoints
             return Results.Ok(new
             {
                 run.RunId, run.AgentName, run.SkillFile, run.TicketId, run.ConcurrencyGroup,
-                run.StartedAt, run.EndedAt, run.SessionId, run.ExitCode,
+                run.StartedAt, run.EndedAt, run.SessionId, run.ExitCode, run.RunnerKind,
                 status = run.Status.ToString(),
                 events = run.SnapshotBuffer(),
             });
@@ -167,16 +167,32 @@ public static partial class Endpoints
             return Results.NoContent();
         }).WithTags("Runs");
 
-        api.MapPost("/projects/{slug}/runs/{runId}/stop", (string slug, string runId, AgentRunRegistry reg) =>
+        api.MapPost("/projects/{slug}/runs/{runId}/stop", async (string slug, string runId, StopRunRequest? req, 
+            AgentRunRegistry reg, RunnerRegistry runners) =>
         {
             var run = reg.Get(runId);
             if (run is null || run.ProjectSlug != slug) return Results.NotFound();
+            
+            if (run.Status != AgentRunStatus.Running)
+                return Results.BadRequest(new { error = "Run is not active." });
+            
+            // Try to stop via runner (handles process kill for OpenCode, etc.)
+            var runner = runners.GetRunner(run.RunnerKind);
+            if (runner is not null)
+            {
+                await runner.StopAsync(runId, CancellationToken.None);
+            }
+            
+            // Fallback: cancel via CancellationToken
             run.Cancellation.Cancel();
-            return Results.NoContent();
+            reg.Complete(runId, AgentRunStatus.Stopped, null);
+            
+            return Results.Ok(new { runId, status = "stopped", reason = req?.Reason });
         }).WithTags("Runs");
 
         api.MapPost("/projects/{slug}/runs/{runId}/retry", async (string slug, string runId,
-            AgentRunRegistry reg, ProjectService ps, TicketService ts, ClaudeRunner runner) =>
+            RetryRunRequest? req, AgentRunRegistry reg, ProjectService ps, TicketService ts, 
+            RunnerRegistry runners) =>
         {
             var run = reg.Get(runId);
             if (run is null || run.ProjectSlug != slug) return Results.NotFound();
@@ -188,16 +204,31 @@ public static partial class Endpoints
             var project = await ps.GetProjectAsync(slug);
             if (project is null) return Results.NotFound();
 
-            string? ticketTitle = null, ticketStatus = null;
+            // Resolve runner: explicit request → original runner kind → default
+            var runnerKind = req?.RunnerKind ?? run.RunnerKind ?? "claude";
+            var runner = runners.GetRunner(runnerKind);
+            if (runner is null || !runner.IsAvailable)
+            {
+                runner = runners.GetDefaultRunner();
+            }
+            if (runner is null)
+            {
+                return Results.BadRequest(new { error = "No runner available." });
+            }
+
+            string? ticketTitle = null, ticketStatus = null, ticketDescription = null;
             if (run.TicketId is int tid)
             {
                 var ticket = await ts.GetTicketAsync(slug, tid);
                 ticketTitle = ticket?.Title;
                 ticketStatus = ticket?.Status;
+                ticketDescription = ticket?.Description;
             }
 
             var newRunId = Guid.NewGuid().ToString("N");
-            var ctx = new ClaudeRunContext
+            
+            // Use AgentRunRequest (generic) instead of ClaudeRunContext
+            var request = new AgentRunRequest
             {
                 ProjectSlug = slug,
                 WorkspacePath = ps.ResolveWorkspacePath(project),
@@ -206,14 +237,17 @@ public static partial class Endpoints
                 TicketId = run.TicketId,
                 TicketTitle = ticketTitle,
                 TicketStatus = ticketStatus,
+                TicketDescription = ticketDescription,
                 ConcurrencyGroup = run.ConcurrencyGroup,
                 Model = run.Model,
-                FallbackModel = project.FallbackModel,
-                RetryOnResumeFailure = true,
-                PresetRunId = newRunId,
+                Prompt = ticketDescription ?? run.AgentName,
+                RunId = newRunId,
+                MaxTurns = 200,
+                ExecutionMode = runner.Kind == "claude" ? ExecutionMode.LegacyClaude : ExecutionMode.DirectOpenCode,
             };
-            _ = runner.RunAsync(ctx, CancellationToken.None);
-            return Results.Ok(new { runId = newRunId });
+            
+            _ = runner.StartAsync(request, CancellationToken.None);
+            return Results.Ok(new { runId = newRunId, runner = runner.Kind, previousRunner = run.RunnerKind });
         }).WithTags("Runs");
     }
 

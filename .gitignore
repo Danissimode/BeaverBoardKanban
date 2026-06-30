@@ -25,6 +25,18 @@ packages/
 
 # ASP.NET
 appsettings.Development.json
+appsettings.*.json
+
+# Environment variables (may contain API keys)
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# Local provider configuration exports
+*provider*.json
+*config*.local*
 
 # Database files
 *.db

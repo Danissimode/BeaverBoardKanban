@@ -10,11 +10,17 @@ namespace KittyClaw.Core.Tests.Integrations.OpenCode;
 
 public class OpenCodeRunnerTests
 {
+    private static AgentRunRegistry CreateTestRegistry()
+    {
+        return new AgentRunRegistry();
+    }
+
     [Fact]
     public void OpenCodeRunner_Kind_IsOpencode()
     {
         var config = new OpenCodeConfig();
-        var runner = new OpenCodeRunner(config);
+        var registry = CreateTestRegistry();
+        var runner = new OpenCodeRunner(config, registry);
         
         Assert.Equal("opencode", runner.Kind);
         Assert.Equal("OpenCode", runner.DisplayName);
@@ -27,7 +33,8 @@ public class OpenCodeRunnerTests
         {
             CliCommand = "/usr/local/bin/opencode"
         };
-        var runner = new OpenCodeRunner(config);
+        var registry = CreateTestRegistry();
+        var runner = new OpenCodeRunner(config, registry);
         
         // This will check if the file exists, which it won't in tests
         // But the logic should work
@@ -42,7 +49,8 @@ public class OpenCodeRunnerTests
             UseServer = true,
             ServerUrl = "http://localhost:8080"
         };
-        var runner = new OpenCodeRunner(config);
+        var registry = CreateTestRegistry();
+        var runner = new OpenCodeRunner(config, registry);
         
         Assert.True(runner.IsAvailable);
     }
@@ -54,7 +62,8 @@ public class OpenCodeRunnerTests
         {
             CliCommand = "nonexistent-opencode-command"
         };
-        var runner = new OpenCodeRunner(config);
+        var registry = CreateTestRegistry();
+        var runner = new OpenCodeRunner(config, registry);
         
         var request = new AgentRunRequest
         {
@@ -84,7 +93,7 @@ public class OpenCodeRunnerTests
         Assert.Null(config.ServerUrl);
         Assert.Null(config.CliCommand);
         Assert.Equal("openrouter", config.DefaultProvider);
-        Assert.Equal("deepseek-v4-pro", config.DefaultModel);
+        Assert.Equal("anthropic/claude-3-5-sonnet-20241022", config.DefaultModel);
         Assert.Equal("build", config.DefaultAgent);
         Assert.Equal(3600, config.TimeoutSeconds);
     }

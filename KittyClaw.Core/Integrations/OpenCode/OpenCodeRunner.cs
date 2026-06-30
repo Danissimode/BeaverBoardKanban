@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -12,14 +13,23 @@ using KittyClaw.Core.Automation.Runners;
 namespace KittyClaw.Core.Integrations.OpenCode;
 
 /// <summary>
-/// OpenCode runner implementation.
-/// This is an isolated OpenCode-specific runner that implements the generic IAgentRunner interface.
+/// OpenCode runner implementation with full AgentRunRegistry integration.
+/// This runner registers all runs with the global registry, enabling:
+/// - Real-time event streaming to UI
+/// - Process tracking for StopAsync
+/// - Steering support via temp files (CLI mode)
+/// - Consistent UX with ClaudeRunner
 /// </summary>
 public sealed class OpenCodeRunner : IAgentRunner
 {
     private readonly OpenCodeConfig _config;
+    private readonly AgentRunRegistry _runRegistry;
     private readonly ILogger<OpenCodeRunner>? _logger;
     private readonly IProviderModelCatalog? _modelCatalog;
+    
+    // Process tracking for StopAsync support
+    private readonly ConcurrentDictionary<string, Process> _processes = new();
+    private readonly SemaphoreSlim _processLock = new(1, 1);
     
     public string Kind => "opencode";
     public string DisplayName => "OpenCode";
@@ -27,10 +37,12 @@ public sealed class OpenCodeRunner : IAgentRunner
     
     public OpenCodeRunner(
         OpenCodeConfig config,
+        AgentRunRegistry runRegistry,
         ILogger<OpenCodeRunner>? logger = null,
         IProviderModelCatalog? modelCatalog = null)
     {
         _config = config;
+        _runRegistry = runRegistry;
         _logger = logger;
         _modelCatalog = modelCatalog;
     }
@@ -51,6 +63,35 @@ public sealed class OpenCodeRunner : IAgentRunner
         
         // Try to find opencode in PATH
         return TryFindInPath("opencode") || TryFindInPath("oc");
+    }
+    
+    /// <summary>
+    /// Deep check with version, provider, and model extraction for health reporting
+    /// </summary>
+    public async Task<(bool Available, string? Version, string? Provider, string? Model)> DeepCheckAsync()
+    {
+        try
+        {
+            var cmd = ResolveCliCommand();
+            var psi = new ProcessStartInfo
+            {
+                FileName = cmd,
+                Arguments = "--version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc is null) return (false, null, _config.DefaultProvider, _config.DefaultModel);
+            
+            var completed = proc.WaitForExit(5000); // 5 second timeout
+            var version = await proc.StandardOutput.ReadToEndAsync();
+            
+            // Extract version, provider, and model from config
+            return (completed && proc.ExitCode == 0, version.Trim(), _config.DefaultProvider, _config.DefaultModel);
+        }
+        catch { return (false, null, _config.DefaultProvider, _config.DefaultModel); }
     }
     
     private static bool TryFindInPath(string command)
@@ -75,7 +116,28 @@ public sealed class OpenCodeRunner : IAgentRunner
     public async Task<AgentRunResult> StartAsync(AgentRunRequest request, CancellationToken cancellationToken)
     {
         var runId = request.RunId ?? Guid.NewGuid().ToString("N");
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = DateTime.UtcNow;
+        
+        // Create AgentRun entity and register it (same pattern as ClaudeRunner)
+        var agentRun = new AgentRun
+        {
+            RunId = runId,
+            ProjectSlug = request.ProjectSlug,
+            TicketId = request.TicketId,
+            AgentName = request.AgentName,
+            SkillFile = request.SkillFile,
+            ConcurrencyGroup = request.ConcurrencyGroup ?? $"ticket-{request.TicketId}",
+            StartedAt = startedAt,
+            Model = request.Model,
+            ChatTarget = request.ExecutionMetadata?.OpenCodeAgent,
+            RunnerKind = Kind // Track which runner this is
+        };
+        
+        // Wire up event hook before registration so no events are missed
+        if (request.OnEventHook is not null)
+            agentRun.OnEvent += request.OnEventHook;
+        
+        _runRegistry.Register(agentRun);
         
         try
         {
@@ -87,7 +149,7 @@ public sealed class OpenCodeRunner : IAgentRunner
             
             // Resolve provider and model
             var provider = request.Provider ?? _config.DefaultProvider ?? "openrouter";
-            var model = request.Model ?? _config.DefaultModel ?? "deepseek-v4-pro";
+            var model = request.Model ?? _config.DefaultModel ?? "anthropic/claude-3-5-sonnet-20241022";
             var opencodeAgent = request.ExecutionMetadata?.OpenCodeAgent ?? _config.DefaultAgent ?? "build";
             
             // Build execution metadata
@@ -104,22 +166,25 @@ public sealed class OpenCodeRunner : IAgentRunner
                 TicketId = request.TicketId?.ToString(),
                 ProjectId = request.ProjectSlug,
                 OpenCodeAgent = opencodeAgent,
-                SteerSupported = _config.UseServer // Steering only supported in server mode
+                SteerSupported = true // Now supported via temp file
             };
             
             // Determine execution path
             if (_config.UseServer && !string.IsNullOrEmpty(_config.ServerUrl))
             {
-                return await ExecuteViaServerAsync(request, runId, startedAt, executionMetadata, cancellationToken);
+                return await ExecuteViaServerAsync(request, agentRun, executionMetadata, cancellationToken);
             }
             else
             {
-                return await ExecuteViaCliAsync(request, runId, startedAt, executionMetadata, cancellationToken);
+                return await ExecuteViaCliAsync(request, agentRun, executionMetadata, cancellationToken);
             }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "OpenCode runner execution failed for run {RunId}", runId);
+            agentRun.Push(new StreamEvent(DateTime.UtcNow, "error", ex.Message));
+            _runRegistry.Complete(runId, AgentRunStatus.Failed, 1);
+            
             var finishedAt = DateTimeOffset.UtcNow;
             return new AgentRunResult
             {
@@ -127,9 +192,9 @@ public sealed class OpenCodeRunner : IAgentRunner
                 ExitCode = 1,
                 Stdout = string.Empty,
                 Stderr = ex.Message,
-                StartedAt = startedAt,
+                StartedAt = new DateTimeOffset(startedAt),
                 FinishedAt = finishedAt,
-                Duration = finishedAt - startedAt,
+                Duration = finishedAt - new DateTimeOffset(startedAt),
                 RunnerKind = Kind,
                 RunId = runId,
                 ExecutionMetadata = new ExecutionMetadata
@@ -146,30 +211,29 @@ public sealed class OpenCodeRunner : IAgentRunner
     
     private async Task<AgentRunResult> ExecuteViaServerAsync(
         AgentRunRequest request, 
-        string runId, 
-        DateTimeOffset startedAt, 
+        AgentRun agentRun,
         ExecutionMetadata executionMetadata,
         CancellationToken cancellationToken)
     {
-        // TODO: Implement OpenCode server API integration
-        // For now, fallback to CLI
+        // TODO: Implement OpenCode server API integration with SSE streaming
         _logger?.LogWarning("OpenCode server mode not yet implemented, falling back to CLI");
-        return await ExecuteViaCliAsync(request, runId, startedAt, executionMetadata, cancellationToken);
+        return await ExecuteViaCliAsync(request, agentRun, executionMetadata, cancellationToken);
     }
     
     private async Task<AgentRunResult> ExecuteViaCliAsync(
         AgentRunRequest request, 
-        string runId, 
-        DateTimeOffset startedAt, 
+        AgentRun agentRun,
         ExecutionMetadata executionMetadata,
         CancellationToken cancellationToken)
     {
-        var cliCommand = _config.CliCommand ?? (TryFindInPath("opencode") ? "opencode" : "oc");
+        var cliCommand = ResolveCliCommand();
         var workingDir = request.WorktreePath ?? request.WorkspacePath;
+        Directory.CreateDirectory(workingDir);
         
         // Build CLI arguments using template
         var arguments = BuildCliArguments(request, executionMetadata);
         var commandDisplay = $"{cliCommand} {string.Join(" ", arguments.Select(a => $"\"{a}\""))}";
+        agentRun.CommandDisplay = commandDisplay;
         
         var processInfo = new ProcessStartInfo
         {
@@ -188,21 +252,33 @@ public sealed class OpenCodeRunner : IAgentRunner
             processInfo.Environment[env.Key] = env.Value;
         }
         
+        // Add OpenCode-specific env vars
+        processInfo.Environment["OPENCODE_PROJECT"] = request.ProjectSlug;
+        processInfo.Environment["OPENCODE_TICKET_ID"] = request.TicketId?.ToString() ?? "";
+        processInfo.Environment["OPENCODE_RUN_ID"] = agentRun.RunId;
+        if (request.ExecutionMetadata?.OpenCodeAgent is string agent)
+            processInfo.Environment["OPENCODE_AGENT"] = agent;
+        
         using var process = Process.Start(processInfo);
         if (process is null)
         {
             throw new InvalidOperationException("Failed to start OpenCode process.");
         }
         
+        // Track process for StopAsync
+        _processes[agentRun.RunId] = process;
+        
         var stdoutBuilder = new StringBuilder();
         var stderrBuilder = new StringBuilder();
         
+        // Stream events to AgentRun
         process.OutputDataReceived += (sender, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
             {
                 stdoutBuilder.AppendLine(e.Data);
-                request.OnEventHook?.Invoke(new StreamEvent(DateTimeOffset.UtcNow.UtcDateTime, "stdout", e.Data));
+                var ev = new StreamEvent(DateTime.UtcNow, "stdout", e.Data);
+                agentRun.Push(ev);
             }
         };
         
@@ -211,23 +287,60 @@ public sealed class OpenCodeRunner : IAgentRunner
             if (!string.IsNullOrEmpty(e.Data))
             {
                 stderrBuilder.AppendLine(e.Data);
-                request.OnEventHook?.Invoke(new StreamEvent(DateTimeOffset.UtcNow.UtcDateTime, "stderr", e.Data));
+                var ev = new StreamEvent(DateTime.UtcNow, "stderr", e.Data);
+                agentRun.Push(ev);
             }
         };
         
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         
-        await process.WaitForExitAsync(cancellationToken);
+        // Start steering file watcher task
+        var steerTask = HandleSteeringAsync(agentRun, workingDir, CancellationToken.None);
+        
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // User cancelled - stop the process
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+            }
+            await steerTask;
+            _processes.TryRemove(agentRun.RunId, out _);
+            _runRegistry.Complete(agentRun.RunId, AgentRunStatus.Stopped, null);
+            
+            return new AgentRunResult
+            {
+                Status = AgentRunStatus.Stopped,
+                ExitCode = null,
+                StartedAt = new DateTimeOffset(agentRun.StartedAt),
+                FinishedAt = DateTimeOffset.UtcNow,
+                Duration = DateTimeOffset.UtcNow - new DateTimeOffset(agentRun.StartedAt),
+                RunnerKind = Kind,
+                RunId = agentRun.RunId,
+                CommandDisplay = commandDisplay,
+                ExecutionMetadata = executionMetadata
+            };
+        }
+        
+        await steerTask;
         
         var finishedAt = DateTimeOffset.UtcNow;
         var exitCode = process.ExitCode;
         
         var status = exitCode == 0 ? AgentRunStatus.Completed : AgentRunStatus.Failed;
         
+        // Complete the run in registry
+        _runRegistry.Complete(agentRun.RunId, status, exitCode);
+        _processes.TryRemove(agentRun.RunId, out _);
+        
         // Update execution metadata
         executionMetadata.SessionId = null; // CLI mode doesn't have session ID
-        executionMetadata.SteerSupported = false;
+        executionMetadata.SteerSupported = true; // Now supported via temp file
         
         return new AgentRunResult
         {
@@ -235,14 +348,64 @@ public sealed class OpenCodeRunner : IAgentRunner
             ExitCode = exitCode,
             Stdout = stdoutBuilder.ToString(),
             Stderr = stderrBuilder.ToString(),
-            StartedAt = startedAt,
+            StartedAt = new DateTimeOffset(agentRun.StartedAt),
             FinishedAt = finishedAt,
-            Duration = finishedAt - startedAt,
+            Duration = finishedAt - new DateTimeOffset(agentRun.StartedAt),
             RunnerKind = Kind,
-            RunId = runId,
+            RunId = agentRun.RunId,
             CommandDisplay = commandDisplay,
             ExecutionMetadata = executionMetadata
         };
+    }
+    
+    /// <summary>
+    /// Handle steering via temp file. OpenCode can poll this file for messages.
+    /// </summary>
+    private async Task HandleSteeringAsync(AgentRun agentRun, string workingDir, CancellationToken ct)
+    {
+        var steerDir = Path.Combine(workingDir, ".agents", "tmp");
+        Directory.CreateDirectory(steerDir);
+        var steerFile = Path.Combine(steerDir, $"steer-{agentRun.RunId}.txt");
+        
+        try
+        {
+            while (!ct.IsCancellationRequested && agentRun.Status == AgentRunStatus.Running)
+            {
+                // Drain steering queue and write to file
+                while (agentRun.SteeringQueue.Reader.TryRead(out var msg))
+                {
+                    await File.WriteAllTextAsync(steerFile, msg, ct);
+                    agentRun.Push(new StreamEvent(DateTime.UtcNow, "steer-sent", $"Steering message sent: {msg}"));
+                }
+                
+                await Task.Delay(500, ct);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Steering file watcher error for run {RunId}", agentRun.RunId);
+        }
+        finally
+        {
+            // Cleanup steering file
+            try { File.Delete(steerFile); } catch { }
+        }
+    }
+    
+    private string ResolveCliCommand()
+    {
+        if (!string.IsNullOrEmpty(_config.CliCommand) && 
+            (File.Exists(_config.CliCommand) || TryFindInPath(_config.CliCommand)))
+        {
+            return _config.CliCommand;
+        }
+        
+        // Try to find in PATH
+        if (TryFindInPath("opencode")) return "opencode";
+        if (TryFindInPath("oc")) return "oc";
+        
+        return _config.CliCommand ?? "opencode";
     }
     
     private List<string> BuildCliArguments(AgentRunRequest request, ExecutionMetadata executionMetadata)
@@ -327,9 +490,33 @@ public sealed class OpenCodeRunner : IAgentRunner
     {
         _logger?.LogInformation("Stop requested for OpenCode run {RunId}", runId);
         
-        // TODO: Implement stop for server mode
-        // For CLI mode, we can't stop the process after it's started
-        // This would require tracking the process ID
+        // Try to get the process
+        if (_processes.TryGetValue(runId, out var process))
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(true);
+                    _logger?.LogInformation("Killed OpenCode process for run {RunId}", runId);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to kill process for run {RunId}", runId);
+            }
+        }
+        
+        // Also check AgentRunRegistry for running status
+        var run = _runRegistry.Get(runId);
+        if (run is not null && run.Status == AgentRunStatus.Running)
+        {
+            run.Cancellation.Cancel();
+            _runRegistry.Complete(runId, AgentRunStatus.Stopped, null);
+            return true;
+        }
+        
         return false;
     }
     
@@ -337,20 +524,33 @@ public sealed class OpenCodeRunner : IAgentRunner
     {
         _logger?.LogInformation("Steer requested for OpenCode run {RunId}: {Message}", runId, message);
         
-        // Steering is only supported in server mode
-        if (_config.UseServer)
+        var run = _runRegistry.Get(runId);
+        if (run is null)
         {
-            // TODO: Implement steering via server API
+            _logger?.LogWarning("Run {RunId} not found for steering", runId);
             return false;
         }
         
-        // CLI mode doesn't support steering
-        return false;
+        // Queue the message for the steering file watcher
+        await run.SteeringQueue.Writer.WriteAsync(message, cancellationToken);
+        return true;
     }
     
     public async Task<AgentRunStatus> GetStatusAsync(string runId, CancellationToken cancellationToken)
     {
-        // TODO: Implement status check for server mode
+        var run = _runRegistry.Get(runId);
+        if (run is not null)
+        {
+            return run.Status;
+        }
+        
+        // Fallback to process check
+        if (_processes.TryGetValue(runId, out var process))
+        {
+            return process.HasExited ? AgentRunStatus.Completed : AgentRunStatus.Running;
+        }
+        
+        // Default to Running if we don't know
         return AgentRunStatus.Running;
     }
 }
@@ -383,7 +583,7 @@ public sealed class OpenCodeConfig
     /// <summary>
     /// Default model to use
     /// </summary>
-    public string? DefaultModel { get; set; } = "deepseek-v4-pro";
+    public string? DefaultModel { get; set; } = "anthropic/claude-3-5-sonnet-20241022";
     
     /// <summary>
     /// Default OpenCode agent to use

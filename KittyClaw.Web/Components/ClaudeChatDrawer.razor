@@ -45,6 +45,23 @@
                     <span class="chat-drawer-ticket-ref" title="@TicketTitle">· #@tid @(string.IsNullOrEmpty(TicketTitle) ? "" : "— " + Truncate(TicketTitle!, 40))</span>
                 }
             </span>
+            
+            @* Runner selector *@
+            <div class="chat-runner-selector">
+                <select @bind="_selectedRunner" class="runner-select" title="Select AI runner">
+                    @foreach (var runner in _availableRunners)
+                    {
+                        <option value="@runner.Kind" disabled="@(!runner.IsAvailable)">
+                            @GetRunnerIcon(runner.Kind) @runner.DisplayName @(runner.IsAvailable ? "" : "(unavailable)")
+                        </option>
+                    }
+                </select>
+                @if (_selectedRunner is not null)
+                {
+                    <span class="runner-indicator" style="--runner-color: @GetRunnerColor(_selectedRunner)"></span>
+                }
+            </div>
+            
             @if (!string.IsNullOrEmpty(_activeRun?.Model))
             {
                 <span class="chat-drawer-model" title="Model">@_activeRun.Model</span>
@@ -231,11 +248,19 @@
         public string InputText { get; set; } = "";
     }
     private sealed record ChatTarget(string Slug, string Name, string Kind);
+    private sealed record ChatRunner(string Kind, string DisplayName, bool IsAvailable);
 
     private string? _activeRunId => _activeStreamId;
 
+    // Runner selection state
+    private List<ChatRunner> _availableRunners = new();
+    private string _selectedRunner = "claude";
+
     protected override async Task OnInitializedAsync()
     {
+        // Fetch available runners for chat
+        await FetchAvailableRunnersAsync();
+        
         // Ticket-scoped or pre-targeted chat: skip the picker entirely.
         if (!string.IsNullOrWhiteSpace(InitialAgent))
         {
@@ -348,6 +373,52 @@
         }
         await EnterConversationAsync(t);
     }
+
+    private async Task FetchAvailableRunnersAsync()
+    {
+        try
+        {
+            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            var runners = await http.GetFromJsonAsync<List<ChatRunner>>($"/api/chat/runners");
+            if (runners is not null)
+            {
+                _availableRunners = runners;
+                // Default to first available runner
+                var available = runners.FirstOrDefault(r => r.IsAvailable);
+                _selectedRunner = available?.Kind ?? "claude";
+            }
+        }
+        catch
+        {
+            // Fallback to basic list
+            _availableRunners = new List<ChatRunner>
+            {
+                new("claude", "Claude Code", true),
+                new("opencode", "OpenCode", true)
+            };
+            _selectedRunner = "claude";
+        }
+    }
+
+    private static string GetRunnerIcon(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "🦫",
+        "claude" => "🤖",
+        "cao" => "🎛️",
+        "team" => "👥",
+        "manual" => "⚪",
+        _ => "⚙️"
+    };
+
+    private static string GetRunnerColor(string kind) => kind.ToLowerInvariant() switch
+    {
+        "opencode" => "#3B82F6",
+        "claude" => "#F97316",
+        "cao" => "#8B5CF6",
+        "team" => "#22C55E",
+        "manual" => "#6B7280",
+        _ => "#6B7280"
+    };
 
     private async Task BackToSelection()
     {
@@ -487,8 +558,9 @@
         using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
         try
         {
-            var resp = await http.PostAsJsonAsync($"/api/projects/{ProjectSlug}/chat/start",
-                new { message = text, target = _activeTarget.Slug, ticketId = TicketId, images = imagesPayload });
+            // Use chat/start-v2 which supports runner selection
+            var resp = await http.PostAsJsonAsync($"/api/projects/{ProjectSlug}/chat/start-v2",
+                new { message = text, target = _activeTarget.Slug, ticketId = TicketId, images = imagesPayload, runner = _selectedRunner });
             if (!resp.IsSuccessStatusCode)
             {
                 _messages.Add(new ChatMessage("error", $"Error {resp.StatusCode}"));

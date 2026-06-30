@@ -97,6 +97,16 @@ public sealed class AgentRunRequest
     public string? RunId { get; init; }
     public ExecutionMetadata? ExecutionMetadata { get; init; }
     public Action<StreamEvent>? OnEventHook { get; init; }
+    
+    /// <summary>
+    /// Image paths for chat context (used by chat endpoints)
+    /// </summary>
+    public IReadOnlyList<string>? ImagePaths { get; init; }
+    
+    /// <summary>
+    /// Chat target for chat-mode runs (e.g., "owner-chat", "programmer")
+    /// </summary>
+    public string? ChatTarget { get; init; }
 }
 
 /// <summary>

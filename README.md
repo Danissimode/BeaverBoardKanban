@@ -133,6 +133,8 @@ Per-project agent state lives **in the workspace**: `<workspace>/.agents/{agent}
 
 ## Project Structure
 
+> **Note:** Internal namespaces (`KittyClaw.*`) are retained for upstream compatibility with the parent repository. The product-facing identity is **Beaver Board Kanban**.
+
 | Path | Description |
 |---|---|
 | **KittyClaw.Core** | Domain models, EF Core contexts, services, automation engine, embedded project template |

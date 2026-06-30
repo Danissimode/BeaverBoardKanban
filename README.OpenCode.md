@@ -97,7 +97,7 @@ pnpm add -g @opencode-ai/cli
 ```bash
 # Authenticate with your provider
 opencode auth login
-# Select your provider (OpenRouter, Anthropic, etc.)
+# Select your provider (see supported providers below)
 ```
 
 ### 3. Create Automation
@@ -107,12 +107,14 @@ opencode auth login
   "type": "runAgent",
   "agent": "programmer",
   "executionMode": "DirectOpenCode",
-  "provider": "openrouter",
-  "model": "qwen/qwen3.5-coder",
+  "provider": "<your-provider>",
+  "model": "<your-model>",
   "opencodeAgent": "build",
   "useWorktree": true
 }
 ```
+
+> **Note:** Replace `<your-provider>` and `<your-model>` with your actual provider (e.g., `openrouter`, `anthropic`, `ollama`) and model ID. Run `opencode models` to see available options for your provider.
 
 ### 4. Run It!
 
@@ -130,8 +132,8 @@ opencode auth login
   "opencode": {
     "useServer": false,
     "cliCommand": "opencode",
-    "defaultProvider": "openrouter",
-    "defaultModel": "qwen/qwen3.5-coder",
+    "defaultProvider": "<your-provider>",
+    "defaultModel": "<your-model>",
     "defaultAgent": "build",
     "timeoutSeconds": 3600
   },
@@ -139,7 +141,7 @@ opencode auth login
     "worktreeRoot": null,
     "autoCreate": true,
     "autoCleanup": false,
-    "branchTemplate": "kc/KC-{ticketId}"
+    "branchTemplate": "bb/{ticketId}"
   }
 }
 ```

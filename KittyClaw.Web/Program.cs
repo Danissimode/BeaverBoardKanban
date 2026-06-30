@@ -71,11 +71,8 @@ builder.Services.AddSingleton(new RunConcurrencyGate(maxConcurrent));
 
 // Runtime config
 builder.Services.AddSingleton<AgentRuntimeConfigLoader>(sp => new AgentRuntimeConfigLoader(dataDir));
-builder.Services.AddSingleton(sp =>
-{
-    var loader = sp.GetRequiredService<AgentRuntimeConfigLoader>();
-    return loader.Load("petpals") ?? loader.CreateDefault("petpals", "/Users/danissimode/Documents/GitHub/PetPalsCursor");
-});
+// Default workspace: use BEAVERBOARD_DEFAULT_WORKSPACE env var, or fall back to app root.
+// User must configure their own projects via the UI.
 
 // Runtimes (all implement IAgentRuntime)
 builder.Services.AddSingleton<ProcessRunner>();
@@ -104,7 +101,14 @@ builder.Services.AddSingleton<IExecutionPolicyService, OpenCodeExecutionPolicySe
 // Zone B: OpenCode integration
 builder.Services.AddSingleton<OpenCodeConfig>();
 builder.Services.AddSingleton<OpenCodePolicyConfig>();
-builder.Services.AddSingleton<OpenCodeRunner>();
+// OpenCodeRunner now requires AgentRunRegistry for full integration
+builder.Services.AddSingleton<OpenCodeRunner>(sp =>
+    new OpenCodeRunner(
+        sp.GetRequiredService<OpenCodeConfig>(),
+        sp.GetRequiredService<AgentRunRegistry>(),
+        sp.GetRequiredService<ILogger<OpenCodeRunner>>(),
+        sp.GetService<IProviderModelCatalog>()
+    ));
 builder.Services.AddSingleton<IWorktreeService, WorktreeService>();
 
 // Failure logbook (SQLite-backed, persists across restarts)
@@ -129,8 +133,15 @@ builder.Services.AddSingleton<RunnerRegistry>(sp =>
     registry.RegisterRunner(new ClaudeRunnerAdapter(claudeRunner));
     registry.RegisterRunner(opencodeRunner);
     
+    // Set OpenCode as default if available
+    if (opencodeRunner.IsAvailable)
+    {
+        registry.SetDefaultRunner("opencode");
+    }
+    
     return registry;
 });
+builder.Services.AddSingleton<RunnerAvailabilityChecker>();
 builder.Services.AddSingleton<AutomationEngine>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AutomationEngine>());
 builder.Services.AddSingleton<TicketAutoRunService>();
@@ -142,6 +153,8 @@ builder.Services.AddSingleton<KittyClaw.Core.Services.DashboardScriptRunner>();
 builder.Services.AddSingleton<KittyClaw.Core.Services.DashboardRefreshService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<KittyClaw.Core.Services.DashboardRefreshService>());
 builder.Services.AddSingleton<KittyClaw.Web.Services.AgentRunsState>();
+builder.Services.AddSingleton<KittyClaw.Web.Services.RunnerStatusState>();
+builder.Services.AddSingleton<KittyClaw.Web.Services.ToastService>();
 builder.Services.AddScoped<KittyClaw.Web.Services.TeamChatState>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<KittyClaw.Web.Services.UpdateCheckService>();

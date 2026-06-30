@@ -22,6 +22,8 @@ public static partial class Endpoints
         MapAutomations(api);
         MapRuns(api);
         MapFailureLogbook(api);
+        MapRunners(api);
+        MapGlobalRuns(api);
         MapChat(api);
         MapTeamChat(api);
         MapImages(api);

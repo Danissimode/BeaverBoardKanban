@@ -2,11 +2,19 @@
 @using KittyClaw.Web.Components.TeamChat
 @using KittyClaw.Web.Services
 @inject TeamChatState ChatState
+@inject RunnerStatusState RunnerStatus
 
 <EscapeKeyHost />
+
+@* Persistent Runner Status Bar *@
+<RunnerStatusBar />
+
 @Body
 
 <UpdateBanner />
+
+@* Toast notifications *@
+<ToastContainer />
 
 @if (!string.IsNullOrEmpty(ChatState.CurrentProjectSlug))
 {

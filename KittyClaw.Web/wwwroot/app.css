@@ -1971,6 +1971,69 @@ button:disabled { opacity: 0.4; cursor: default; }
 .agent-log-stopped   { color: #f59e42; border-color: #f59e4244; }
 .agent-log-stopped:hover { color: #ffb060; border-color: #f59e42; }
 
+/* ── Enhanced Runner Badges ─────────────────────────────────────────────── */
+.runner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+    background: color-mix(in srgb, var(--runner-badge-color, #3B82F6) 12%, #1a1f2c);
+    border: 1px solid color-mix(in srgb, var(--runner-badge-color, #3B82F6) 40%, transparent);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--runner-badge-color, #3B82F6);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1.2;
+}
+
+.runner-badge:hover {
+    background: color-mix(in srgb, var(--runner-badge-color, #3B82F6) 20%, #1a1f2c);
+    transform: scale(1.05);
+}
+
+.runner-badge-icon {
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+.runner-badge-duration,
+.runner-badge-status {
+    font-size: 0.65rem;
+    opacity: 0.9;
+}
+
+/* Status variants */
+.runner-badge--running {
+    animation: runner-badge-pulse 2s ease-in-out infinite;
+}
+
+.runner-badge--completed {
+    opacity: 0.7;
+}
+
+.runner-badge--failed {
+    --runner-badge-color: #EF4444;
+    animation: runner-badge-shake 0.3s ease-in-out;
+}
+
+.runner-badge--stopped {
+    opacity: 0.6;
+}
+
+@keyframes runner-badge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes runner-badge-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
 /* ─── Agent run drawer ─────────────────────────────────────────────────── */
 .agent-drawer-overlay {
     position: fixed; inset: 0;
@@ -2756,6 +2819,8 @@ body.flow-dnd-active * { cursor: grabbing !important; }
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 .chat-drawer-title {
     font-weight: 600;
@@ -2772,6 +2837,46 @@ body.flow-dnd-active * { cursor: grabbing !important; }
     margin-left: auto;
     margin-right: 0.5rem;
 }
+
+/* Chat runner selector */
+.chat-runner-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.runner-select {
+    background: var(--surface2, #1e2736);
+    border: 1px solid var(--border, #333);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text, #e4e4f0);
+    cursor: pointer;
+    outline: none;
+}
+
+.runner-select:focus {
+    border-color: var(--accent, #F97316);
+}
+
+.runner-select option {
+    background: var(--surface, #191928);
+    color: var(--text, #e4e4f0);
+}
+
+.runner-select option:disabled {
+    color: var(--text-muted, #7a7a96);
+}
+
+.runner-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--runner-color, #6B7280);
+    box-shadow: 0 0 4px var(--runner-color, #6B7280);
+}
+
 .chat-messages {
     flex: 1;
     min-height: 0;
@@ -4602,6 +4707,91 @@ details[open] .tool-call-summary::before { transform: rotate(90deg); }
     max-height: 50vh;
 }
 
+/* ── Live Progress Section ─────────────────────────────────────────────── */
+.live-progress-section {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.live-progress-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.live-progress-icon {
+    font-size: 1.1rem;
+}
+
+.live-progress-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-bright, #fff);
+}
+
+.live-progress-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.live-progress-badge.running {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22C55E;
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.live-progress-time {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--text-muted, #7a7a96);
+    font-family: monospace;
+}
+
+.live-progress-bar-container {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.live-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%);
+    border-radius: 3px;
+    transition: width 0.5s ease-out;
+    animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes progress-shimmer {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+
+.live-progress-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.live-progress-actions .btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+}
+
 /* ── Plan ──────────────────────────────────────────────────────────────── */
 .plan-status-row {
     display: flex;
@@ -5041,6 +5231,70 @@ details[open] .tool-call-summary::before { transform: rotate(90deg); }
     border-radius: 999px;
 }
 
+.filter-badge.active-badge {
+    background: #22C55E;
+    animation: pulse-badge-green 2s infinite;
+}
+
+@keyframes pulse-badge-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* AI Event messages in TeamChat */
+.message-card.ai-event {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.message-ticket-link,
+.message-run-link {
+    background: transparent;
+    border: none;
+    color: var(--accent, #F97316);
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.message-ticket-link:hover,
+.message-run-link:hover {
+    color: var(--accent-hover, #FB923C);
+}
+
+.ai-event-badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.ai-event-badge.running {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22C55E;
+}
+
+.ai-event-badge.completed {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22C55E;
+}
+
+.ai-event-badge.failed {
+    background: rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+}
+
+.ai-event-badge.stopped {
+    background: rgba(245, 158, 11, 0.2);
+    color: #F59E0B;
+}
+
+.ai-event-badge.neutral {
+    background: rgba(139, 92, 246, 0.2);
+    color: #8B5CF6;
+}
+
 .dock-messages {
     flex: 1;
     overflow-y: auto;
@@ -5361,6 +5615,12 @@ details[open] .tool-call-summary::before { transform: rotate(90deg); }
     color: var(--accent-success);
 }
 
+.connector-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    opacity: 0.85;
+}
+
 .connector-check {
     font-size: 1.2rem;
     font-weight: 700;
@@ -5464,4 +5724,626 @@ details[open] .tool-call-summary::before { transform: rotate(90deg); }
     display: block;
     margin-left: auto;
     margin-right: auto;
+}
+
+
+/* ── Runner Status Bar ───────────────────────────────────────────────────── */
+.runner-status-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.35rem 1rem;
+    backdrop-filter: blur(8px);
+}
+
+.runner-status-bar-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+}
+
+.runner-status-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin-right: 0.25rem;
+}
+
+.runner-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.runner-status-badge:hover {
+    border-color: var(--runner-color, var(--accent));
+    background: color-mix(in srgb, var(--runner-color, var(--accent)) 10%, var(--surface2));
+    transform: translateY(-1px);
+}
+
+.runner-status-badge.available {
+    border-color: color-mix(in srgb, var(--runner-color, var(--accent)) 40%, transparent);
+}
+
+.runner-status-badge.unavailable {
+    opacity: 0.5;
+}
+
+.runner-status-icon {
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.runner-status-name {
+    color: var(--text);
+}
+
+.runner-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.runner-status-dot.available {
+    background: #22C55E;
+    box-shadow: 0 0 4px #22C55E;
+    animation: pulse-green 2s ease-in-out infinite;
+}
+
+.runner-status-dot.unavailable {
+    background: #6B7280;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.runner-status-spacer {
+    flex: 1;
+}
+
+.runner-status-refresh {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: color 0.15s, background 0.15s;
+}
+
+.runner-status-refresh:hover {
+    color: var(--text);
+    background: var(--surface2);
+}
+
+.runner-status-refresh .spinning {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ── Toast Notifications ─────────────────────────────────────────────── */
+.toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 400px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface, #191928);
+    border: 1px solid var(--border, #2e2e48);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: toast-in 0.3s ease-out;
+    pointer-events: auto;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.toast.toast-info {
+    border-left: 3px solid #3B82F6;
+}
+
+.toast.toast-success {
+    border-left: 3px solid #22C55E;
+}
+
+.toast.toast-warning {
+    border-left: 3px solid #F59E0B;
+}
+
+.toast.toast-error {
+    border-left: 3px solid #EF4444;
+}
+
+.toast-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+.toast-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.toast-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-bright, #fff);
+    margin-bottom: 0.15rem;
+}
+
+.toast-body {
+    font-size: 0.82rem;
+    color: var(--text-muted, #7a7a96);
+    line-height: 1.4;
+}
+
+.toast-action {
+    background: transparent;
+    border: 1px solid var(--border, #2e2e48);
+    border-radius: 4px;
+    color: var(--text, #e4e4f0);
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.toast-action:hover {
+    background: var(--surface2, #232338);
+    border-color: var(--accent, #F97316);
+    color: var(--accent, #F97316);
+}
+
+.toast-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #7a7a96);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+    transition: color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.toast-dismiss:hover {
+    color: var(--text, #e4e4f0);
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+    .toast-container {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        max-width: none;
+    }
+}
+
+/* Mobile compact mode */
+@media (max-width: 640px) {
+    .runner-status-bar {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .runner-status-name {
+        display: none;
+    }
+    
+    .runner-status-badge {
+        padding: 0.25rem 0.4rem;
+    }
+}
+
+
+/* ── Mobile Responsive Styles ─────────────────────────────────────────── */
+
+/* Tablet (640px - 1024px) */
+@media (min-width: 640px) and (max-width: 1024px) {
+    /* Board layout adjustments */
+    .board {
+        padding: 0.5rem;
+        gap: 0.4rem;
+    }
+    
+    .column {
+        min-width: 200px;
+        max-width: 260px;
+    }
+    
+    /* Chat drawer */
+    .chat-drawer {
+        width: 100vw;
+    }
+    
+    .chat-messages {
+        max-height: calc(100vh - 200px);
+    }
+}
+
+/* Mobile (< 640px) */
+@media (max-width: 640px) {
+    /* Page header */
+    .page-header {
+        flex-wrap: wrap;
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .page-header h1 {
+        font-size: 1.1rem;
+        order: 2;
+        width: 100%;
+    }
+    
+    .page-header .back-link {
+        order: 1;
+    }
+    
+    .view-toggle {
+        order: 3;
+    }
+    
+    .header-right {
+        order: 4;
+        width: 100%;
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    .header-action-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    /* Filter bar */
+    .filter-bar {
+        max-width: 100%;
+        order: 5;
+        width: 100%;
+    }
+    
+    /* Board - single column horizontal scroll */
+    .board {
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0.5rem;
+        gap: 0.5rem;
+        height: calc(100vh - 180px);
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+    }
+    
+    .column {
+        flex-shrink: 0;
+        width: 85vw;
+        max-width: 320px;
+        min-width: 0;
+        scroll-snap-align: start;
+    }
+    
+    /* Column header */
+    .column-header {
+        padding: 0.5rem 0.6rem;
+    }
+    
+    .status-pill {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+    
+    .column-body {
+        padding: 0.4rem;
+    }
+    
+    /* Ticket cards */
+    .ticket-card {
+        padding: 0.6rem 0.75rem;
+    }
+    
+    .ticket-title {
+        font-size: 0.85rem;
+        -webkit-line-clamp: 2;
+    }
+    
+    .ticket-card-top {
+        margin-bottom: 0.3rem;
+    }
+    
+    /* Chat drawer - full screen */
+    .chat-drawer {
+        width: 100vw;
+        height: 100vh;
+        top: 0;
+        border-radius: 0;
+    }
+    
+    .chat-runner-selector {
+        width: 100%;
+    }
+    
+    .runner-select {
+        flex: 1;
+    }
+    
+    /* Agent run drawer */
+    .agent-drawer {
+        width: 100vw;
+        height: 100vh;
+        top: 0;
+        border-radius: 0;
+    }
+    
+    /* Ticket panel - slide up from bottom */
+    .ticket-panel {
+        max-width: 100vw;
+        border-radius: 16px 16px 0 0;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    
+    /* Drawer tabs */
+    .drawer-tabs {
+        padding: 0.5rem 0.75rem 0;
+        overflow-x: auto;
+    }
+    
+    .drawer-tab {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+    
+    .drawer-tab-content {
+        padding: 0.75rem;
+    }
+    
+    /* TeamChat dock */
+    .team-chat-dock.expanded .dock-panel {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    .dock-filters {
+        padding: 0.4rem;
+        gap: 0.15rem;
+    }
+    
+    .filter-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    /* Live progress */
+    .live-progress-section {
+        padding: 0.6rem 0.75rem;
+    }
+    
+    .live-progress-actions {
+        flex-direction: column;
+    }
+    
+    /* Create popup */
+    .create-popup {
+        max-width: 100vw;
+        border-radius: 16px 16px 0 0;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    
+    .create-popup-body {
+        padding: 0.75rem;
+    }
+    
+    .field-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .orch-select,
+    .text-input,
+    .create-input,
+    .create-textarea {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.5rem;
+    }
+    
+    /* Labels */
+    .label-list {
+        gap: 0.25rem;
+    }
+    
+    .label-pill {
+        font-size: 0.65rem;
+        padding: 0.1rem 0.4rem;
+    }
+    
+    /* Orchestration badges */
+    .orchestration-badges {
+        gap: 0.2rem;
+    }
+    
+    .orch-badge {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.3rem;
+    }
+    
+    /* Runner badges */
+    .runner-badge {
+        font-size: 0.65rem;
+        padding: 0.1rem 0.4rem;
+    }
+    
+    /* Priority dot */
+    .priority-dot {
+        width: 8px;
+        height: 8px;
+    }
+    
+    /* Ticket ID */
+    .ticket-id {
+        font-size: 0.7rem;
+    }
+    
+    /* Board header action buttons - stack vertically */
+    .board {
+        padding-bottom: 80px; /* Space for FAB if needed */
+    }
+}
+
+/* Very small screens (< 400px) */
+@media (max-width: 400px) {
+    .page-header h1 {
+        font-size: 1rem;
+    }
+    
+    .ticket-card {
+        padding: 0.5rem;
+    }
+    
+    .ticket-title {
+        font-size: 0.8rem;
+    }
+    
+    /* Compact status bar */
+    .runner-status-bar {
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .runner-status-icon {
+        font-size: 0.85rem;
+    }
+    
+    .runner-status-refresh {
+        padding: 0.2rem 0.3rem;
+    }
+    
+    /* Toast container adjustments */
+    .toast-container {
+        left: 0.5rem;
+        right: 0.5rem;
+        bottom: 0.5rem;
+    }
+    
+    .toast {
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* Desktop (> 1024px) - restore defaults and add enhancements */
+@media (min-width: 1025px) {
+    /* Larger columns for wide screens */
+    .column {
+        max-width: 340px;
+    }
+    
+    /* Chat drawer can be wider */
+    .chat-drawer {
+        width: min(720px, 50vw);
+    }
+    
+    /* Agent run drawer */
+    .agent-drawer {
+        width: min(720px, 50vw);
+    }
+    
+    /* TeamChat dock panel */
+    .team-chat-dock.expanded .dock-panel {
+        width: 420px;
+        height: 560px;
+    }
+}
+
+/* Touch-specific improvements */
+@media (hover: none) and (pointer: coarse) {
+    /* No hover effects on touch devices */
+    .runner-status-badge:hover {
+        transform: none;
+    }
+    
+    .runner-badge:hover {
+        transform: none;
+    }
+    
+    /* Larger touch targets */
+    .filter-btn,
+    .drawer-tab,
+    .action-btn,
+    .chat-action-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* No double-tap zoom on buttons */
+    button {
+        touch-action: manipulation;
+    }
+    
+    /* Smooth scrolling */
+    .board,
+    .dock-messages,
+    .chat-messages,
+    .column-body {
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

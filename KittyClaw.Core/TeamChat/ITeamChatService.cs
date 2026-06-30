@@ -3,7 +3,7 @@ using KittyClaw.Core.Automation;
 namespace KittyClaw.Core.TeamChat;
 
 public record TeamChatQuery(
-    string? Filter = null,     // all | needs-human | running | blocked | failures | mentions
+    string? Filter = null,     // all | needs-human | running | blocked | failures | mentions | ai-activity
     int? TicketId = null,
     string? RunId = null,
     string? AuthorId = null,

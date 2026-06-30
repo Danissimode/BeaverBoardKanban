@@ -114,6 +114,15 @@ public class TeamChatService : ITeamChatService
             filtered = filtered.Where(m => m.MessageType == "failure");
         else if (query.Filter == "mentions")
             filtered = filtered.Where(m => m.TargetType == "role" || m.TargetType == "agent");
+        else if (query.Filter == "ai-activity")
+            // Show messages related to AI runs: agent messages, status updates, run events
+            filtered = filtered.Where(m => 
+                m.AuthorType == "agent" || 
+                m.MessageType == "run_started" || 
+                m.MessageType == "run_completed" || 
+                m.MessageType == "run_failed" ||
+                m.MessageType == "run_stopped" ||
+                (m.RunId != null && m.DeliveryStatus == "delivered"));
 
         if (query.TicketId.HasValue)
             filtered = filtered.Where(m => m.TicketId == query.TicketId);

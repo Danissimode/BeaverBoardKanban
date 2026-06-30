@@ -97,7 +97,24 @@
                             <div class="connector-icon">🦫</div>
                             <div class="connector-info">
                                 <span class="connector-name">@L["OpenCode"]</span>
-                                <span class="connector-status">@(_opencodeInstalled ? L["StatusInstalled"] : L["StatusNotInstalled"])</span>
+                                @if (_opencodeInstalled)
+                                {
+                                    <span class="connector-status">
+                                        ✅ @(_opencodeVersion ?? L["StatusInstalled"])
+                                        @if (!string.IsNullOrEmpty(_opencodeProvider))
+                                        {
+                                            <span class="connector-meta">· via @_opencodeProvider</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(_opencodeModel))
+                                        {
+                                            <span class="connector-meta">· @_opencodeModel</span>
+                                        }
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="connector-status">@L["StatusNotInstalled"]</span>
+                                }
                             </div>
                             @if (_opencodeInstalled)
                             {
@@ -250,6 +267,9 @@
     private bool _opencodeInstalled;
     private bool _claudeInstalled;
     private bool _gitInstalled;
+    private string? _opencodeVersion;
+    private string? _opencodeProvider;
+    private string? _opencodeModel;
     private List<string>? _initConflicts;
     private (string text, string css)? _creationStatus;
     private IDisposable? _escOnboarding;
@@ -299,12 +319,41 @@
         StateHasChanged();
     }
 
-    private void RecheckTools()
+    private async void RecheckTools()
     {
         _opencodeInstalled = AgentsTemplate.IsOpenCodeAvailable();
         _gitInstalled = AgentsTemplate.IsGitAvailable();
         // Claude Code is optional
         _claudeInstalled = AgentsTemplate.IsClaudeAvailable();
+        
+        // Fetch extended runner info
+        try
+        {
+            var reports = await NewHttp().GetFromJsonAsync<List<RunnerHealthReport>>("/api/runners/health");
+            if (reports != null)
+            {
+                var opencode = reports.FirstOrDefault(r => r.Kind == "opencode");
+                if (opencode != null)
+                {
+                    _opencodeVersion = opencode.Version ?? "v?.?.?";
+                    _opencodeProvider = opencode.Provider;
+                    _opencodeModel = opencode.Model;
+                }
+                else
+                {
+                    _opencodeVersion = null;
+                    _opencodeProvider = null;
+                    _opencodeModel = null;
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to basic availability check
+            _opencodeVersion = null;
+            _opencodeProvider = null;
+            _opencodeModel = null;
+        }
     }
 
     private async Task DismissOnboarding()
@@ -333,6 +382,7 @@
 
     private sealed record BrowseCapabilities(bool FolderPicker);
     private sealed record BrowseResult(string Path);
+    private sealed record RunnerHealthReport(string Kind, string? Version, string? Provider, string? Model, bool Available);
 
     private void CreateProject()
     {

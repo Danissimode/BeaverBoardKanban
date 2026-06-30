@@ -16,6 +16,13 @@ public sealed class AgentRun
     public required string SkillFile { get; init; }
     public required string ConcurrencyGroup { get; init; }
     public required DateTime StartedAt { get; init; }
+    
+    /// <summary>
+    /// Which runner is executing this run (e.g., "claude", "opencode").
+    /// Set by the runner when it registers the run.
+    /// </summary>
+    public string RunnerKind { get; set; } = "claude";
+    
     public string? SessionId { get; set; }
     public string? Model { get; set; }
     public string? ChatTarget { get; set; }
@@ -82,6 +89,7 @@ public sealed class AgentRunSnapshot
     public string SkillFile { get; set; } = "";
     public string ConcurrencyGroup { get; set; } = "";
     public DateTime StartedAt { get; set; }
+    public string RunnerKind { get; set; } = "claude";
     public DateTime? EndedAt { get; set; }
     public string? SessionId { get; set; }
     public string? Model { get; set; }
@@ -123,6 +131,7 @@ public sealed class RunLogStore
             SkillFile = run.SkillFile,
             ConcurrencyGroup = run.ConcurrencyGroup,
             StartedAt = run.StartedAt,
+            RunnerKind = run.RunnerKind,
             EndedAt = run.EndedAt,
             SessionId = run.SessionId,
             Model = run.Model,
@@ -169,6 +178,7 @@ public sealed class RunLogStore
                 ConcurrencyGroup = snapshot.ConcurrencyGroup,
                 StartedAt = snapshot.StartedAt,
             };
+            run.RunnerKind = snapshot.RunnerKind;
             run.SessionId = snapshot.SessionId;
             run.Model = snapshot.Model;
             run.RuntimeId = snapshot.RuntimeId;

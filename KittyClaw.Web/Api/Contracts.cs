@@ -24,12 +24,15 @@ public record UpdateMemberRequest(string? Name = null);
 public record SetParentRequest(int ParentId);
 public record UpdateProjectRequest(string? WorkspacePath = null, string? FallbackModel = null, bool UpdateFallbackModel = false);
 public record SteerRunRequest(string Text);
+public record RetryRunRequest(string? RunnerKind = null);
+public record StopRunRequest(string? Reason = null);
 public record BrowseFolderRequest(string? InitialPath = null);
 public record ChatImageDto(string DataUrl, string Mime, string Name, long SizeBytes);
-public record ChatStartRequest(string Message, string Target = "owner-chat", bool ForceNew = false, int? TicketId = null, IReadOnlyList<ChatImageDto>? Images = null);
+public record ChatStartRequest(string Message, string Target = "owner-chat", bool ForceNew = false, int? TicketId = null, IReadOnlyList<ChatImageDto>? Images = null, string? Runner = null);
 public record ChatTargetDto(string Slug, string Name, string Kind);
 public record ChatTargetsResponse(string? LastTarget, List<ChatTargetDto> Targets);
 public record ChatMessageDto(string Role, string Text, string? ToolName, string? Detail, string CreatedAt);
+public record ChatRunnerDto(string Kind, string DisplayName, bool IsAvailable);
 public record AddTileRequest(string TileSlug); // required -- folder name (slug) for the new tile
 public record MoveTileRequest(int X, int Y); // required — pixel coords snapped to 20px grid
 public record ResizeTileRequest(int Width, int Height); // required — pixels snapped to 20px grid

@@ -173,17 +173,25 @@ else
                                     }
                                     @if (activeRun is not null)
                                     {
-                                        <span class="agent-spinner"
-                                              title="@activeRun.AgentName en cours"
-                                              @onclick="() => OpenRunDrawer(activeRun.RunId)"
-                                              @onclick:stopPropagation></span>
+                                        <button class="runner-badge runner-badge--active"
+                                                style="--runner-badge-color: @GetRunnerColor(activeRun.RunnerKind)"
+                                                title="@activeRun.RunnerKind · running · @GetElapsed(activeRun.StartedAt)"
+                                                @onclick="() => OpenRunDrawer(activeRun.RunId)"
+                                                @onclick:stopPropagation>
+                                            <span class="runner-badge-icon">@GetRunnerIcon(activeRun.RunnerKind)</span>
+                                            <span class="runner-badge-duration">@GetElapsed(activeRun.StartedAt)</span>
+                                        </button>
                                     }
                                     else if (lastRun is not null)
                                     {
-                                        <button class="agent-log-btn agent-log-@lastRun.Status.ToString().ToLowerInvariant()"
-                                                title="Voir le dernier run (@lastRun.AgentName · @lastRun.Status)"
+                                        <button class="runner-badge runner-badge--@lastRun.Status.ToString().ToLowerInvariant()"
+                                                style="--runner-badge-color: @GetRunnerColor(lastRun.RunnerKind)"
+                                                title="@lastRun.RunnerKind · @lastRun.Status"
                                                 @onclick="() => OpenRunDrawer(lastRun.RunId)"
-                                                @onclick:stopPropagation>log</button>
+                                                @onclick:stopPropagation>
+                                            <span class="runner-badge-icon">@GetRunnerIcon(lastRun.RunnerKind)</span>
+                                            <span class="runner-badge-status">@GetShortStatus(lastRun.Status)</span>
+                                        </button>
                                     }
                                     <span class="ticket-id">#@ticket.Id</span>
                                 </div>
@@ -466,14 +474,10 @@ else
                     <label class="field-label">Model Profile</label>
                     <select class="orch-select" @bind="_newTicketModelProfileId">
                         <option value="">Default (from role)</option>
-                        <option value="petpals-planner">PetPals Planner</option>
-                        <option value="petpals-coder">PetPals Coder</option>
-                        <option value="petpals-coder-pro">PetPals Coder Pro</option>
-                        <option value="petpals-reviewer">PetPals Reviewer</option>
-                        <option value="petpals-security-reviewer">PetPals Security Reviewer</option>
-                        <option value="petpals-researcher">PetPals Researcher</option>
-                        <option value="petpals-cheap">PetPals Cheap</option>
-                        <option value="petpals-local">PetPals Local</option>
+                        <option value="coder">Coder</option>
+                        <option value="reviewer">Reviewer</option>
+                        <option value="planner">Planner</option>
+                        <option value="researcher">Researcher</option>
                     </select>
 
                     <label class="field-label">Risk Level</label>
@@ -937,6 +941,33 @@ else
             {
                 <div class="drawer-tab-content">
                     <div class="execution-section">
+                        @* Live progress section (shown when there's an active run) *@
+                        @{
+                            var execActiveRun = AgentRuns.ActiveForTicket(Slug, _selectedTicket.Id);
+                        }
+                        @if (execActiveRun is not null)
+                        {
+                            <div class="live-progress-section">
+                                <div class="live-progress-header">
+                                    <span class="live-progress-icon">@GetRunnerIcon(execActiveRun.RunnerKind)</span>
+                                    <span class="live-progress-title">@execActiveRun.RunnerKind</span>
+                                    <span class="live-progress-badge running">running</span>
+                                    <span class="live-progress-time">@GetElapsed(execActiveRun.StartedAt)</span>
+                                </div>
+                                <div class="live-progress-bar-container">
+                                    <div class="live-progress-bar" style="width: @(_liveProgress ?? 0)%"></div>
+                                </div>
+                                <div class="live-progress-actions">
+                                    <button class="btn-secondary btn-sm" @onclick="() => OpenRunDrawer(execActiveRun.RunId)">
+                                        View Console
+                                    </button>
+                                    <button class="btn-warning btn-sm" @onclick="StopLatestRun">
+                                        Stop
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
                         @* Auto-run status banner *@
                         <div class="autorun-status">
                             @{
@@ -1380,6 +1411,7 @@ else
     private List<FailureLogEntry> _failureHistory = [];
     private string _activeDrawerTab = "details"; // details | plan | execution | run
     private bool _isStartingRun = false;
+    private int? _liveProgress; // 0-100, estimated from run duration
     private string? _opencodeHealth;
     private bool _planEditing = false;
     private string _planDraft = "";
@@ -2083,6 +2115,41 @@ else
         TicketPriority.Required => "required",
         TicketPriority.Critical => "critical",
         _ => "nice"
+    };
+
+    private static string GetRunnerColor(string runnerKind) => runnerKind.ToLowerInvariant() switch
+    {
+        "opencode" => "#3B82F6",  // Blue
+        "claude" => "#F97316",    // Orange
+        "cao" => "#8B5CF6",       // Purple
+        "team" => "#22C55E",      // Green
+        "manual" => "#6B7280",    // Gray
+        _ => "#6B7280"
+    };
+
+    private static string GetRunnerIcon(string runnerKind) => runnerKind.ToLowerInvariant() switch
+    {
+        "opencode" => "🦫",
+        "claude" => "🤖",
+        "cao" => "🎛️",
+        "team" => "👥",
+        "manual" => "⚪",
+        _ => "⚙️"
+    };
+
+    private static string GetElapsed(DateTime start)
+    {
+        var d = DateTime.UtcNow - start;
+        return d.TotalHours >= 1 ? $"{(int)d.TotalHours}h{d.Minutes:D2}m" : $"{d.Minutes:D2}m";
+    }
+
+    private static string GetShortStatus(AgentRunStatus status) => status switch
+    {
+        AgentRunStatus.Running => "running",
+        AgentRunStatus.Completed => "done",
+        AgentRunStatus.Failed => "failed",
+        AgentRunStatus.Stopped => "stopped",
+        _ => "?"
     };
 
     private async Task SetPriority(TicketPriority p)

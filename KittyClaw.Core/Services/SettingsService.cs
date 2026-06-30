@@ -62,4 +62,22 @@ public sealed class SettingsData
     public bool NotificationsEnabled { get; set; } = true;
     public string AwsProfile { get; set; } = "";
     public string AwsRegion { get; set; } = "us-east-1";
+    
+    // Runner preferences
+    public string PreferredRunner { get; set; } = "auto"; // "auto", "opencode", "claude"
+    public bool SkipClaudeSetup { get; set; } = false;
+    public OpenCodeConfigData OpenCode { get; set; } = new();
+}
+
+/// <summary>
+/// OpenCode-specific settings
+/// </summary>
+public sealed class OpenCodeConfigData
+{
+    public bool UseServer { get; set; } = false;
+    public string? ServerUrl { get; set; }
+    public string? CliCommand { get; set; }
+    public string? DefaultProvider { get; set; } = "openrouter";
+    public string? DefaultModel { get; set; } = "anthropic/claude-3-5-sonnet-20241022";
+    public string? DefaultAgent { get; set; } = "build";
 }

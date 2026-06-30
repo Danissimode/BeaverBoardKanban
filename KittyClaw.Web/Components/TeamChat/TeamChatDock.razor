@@ -1,5 +1,7 @@
 @using KittyClaw.Core.TeamChat
+@using KittyClaw.Web.Services
 @inject ITeamChatService TeamChatService
+@inject AgentRunsState AgentRuns
 @inject NavigationManager Nav
 @rendermode InteractiveServer
 
@@ -29,6 +31,13 @@
 
             <div class="dock-filters">
                 <button class="filter-btn @(ActiveFilter == "all" ? "active" : "")" @onclick='() => SetFilter("all")'>All</button>
+                <button class="filter-btn @(ActiveFilter == "ai-activity" ? "active" : "")" @onclick='() => SetFilter("ai-activity")'>
+                    🤖 AI Activity
+                    @if (ActiveRunsCount > 0)
+                    {
+                        <span class="filter-badge active-badge">@ActiveRunsCount</span>
+                    }
+                </button>
                 <button class="filter-btn @(ActiveFilter == "needs-human" ? "active" : "")" @onclick='() => SetFilter("needs-human")'>
                     Needs Human
                     @if (NeedsHumanCount > 0)
@@ -50,7 +59,8 @@
                 {
                     @foreach (var msg in Messages)
                     {
-                        <div class="message-card @msg.AuthorType @msg.MessageType priority-@GetPriority(msg)">
+                        var isAiEvent = IsAiEventMessage(msg);
+                        <div class="message-card @msg.AuthorType @msg.MessageType priority-@GetPriority(msg) @(isAiEvent ? "ai-event" : "")">
                             <div class="message-header">
                                 @if (msg.AuthorType == "agent")
                                 {
@@ -61,33 +71,43 @@
                                     <span class="message-system-badge">system</span>
                                 }
                                 <span class="message-author">@msg.AuthorId</span>
-                                <span class="message-type">@msg.MessageType</span>
+                                @if (isAiEvent)
+                                {
+                                    <span class="message-type ai-event-badge @GetAiEventBadgeClass(msg)">@GetAiEventIcon(msg)</span>
+                                }
+                                else
+                                {
+                                    <span class="message-type">@msg.MessageType</span>
+                                }
                                 @if (msg.TicketId.HasValue)
                                 {
-                                    <span class="message-ticket">#@msg.TicketId</span>
+                                    <button class="message-ticket-link" @onclick='() => NavigateToTicket(msg.TicketId.Value)'>#@msg.TicketId</button>
                                 }
                                 @if (!string.IsNullOrEmpty(msg.RunId))
                                 {
-                                    <span class="message-run">run</span>
+                                    <button class="message-run-link" @onclick='() => ViewRun(msg.RunId)'>run</button>
                                 }
                                 <span class="message-time">@msg.CreatedAt.ToString("HH:mm")</span>
                             </div>
                             <div class="message-body">@msg.Body</div>
-                            <div class="message-footer">
-                                <span class="delivery-status @msg.DeliveryStatus">@msg.DeliveryStatus</span>
-                                @if (msg.TargetType != "team")
-                                {
-                                    <span class="message-target">@msg.TargetType:@msg.TargetId</span>
-                                }
-                                @if (msg.DeliveryStatus == "open" && msg.MessageType == "question")
-                                {
-                                    <button class="action-btn" @onclick="() => OpenReply(msg)">Reply</button>
-                                }
-                                @if (msg.DeliveryStatus != "resolved")
-                                {
-                                    <button class="action-btn" @onclick="() => ResolveMessage(msg)">Resolve</button>
-                                }
-                            </div>
+                            @if (!isAiEvent)
+                            {
+                                <div class="message-footer">
+                                    <span class="delivery-status @msg.DeliveryStatus">@msg.DeliveryStatus</span>
+                                    @if (msg.TargetType != "team")
+                                    {
+                                        <span class="message-target">@msg.TargetType:@msg.TargetId</span>
+                                    }
+                                    @if (msg.DeliveryStatus == "open" && msg.MessageType == "question")
+                                    {
+                                        <button class="action-btn" @onclick="() => OpenReply(msg)">Reply</button>
+                                    }
+                                    @if (msg.DeliveryStatus != "resolved")
+                                    {
+                                        <button class="action-btn" @onclick="() => ResolveMessage(msg)">Resolve</button>
+                                    }
+                                </div>
+                            }
                         </div>
                     }
                 }
@@ -127,12 +147,31 @@
     private string MessageText = "";
     private int UnreadCount;
     private int NeedsHumanCount;
+    private int ActiveRunsCount;
     private List<TeamChatMessage> Messages = new();
     private ElementReference MessagesContainer;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadMessages();
+        await UpdateActiveRunsCount();
+        AgentRuns.OnChange += OnAgentRunsChanged;
+    }
+
+    private void OnAgentRunsChanged()
+    {
+        _ = UpdateActiveRunsCount();
+        if (ActiveFilter == "ai-activity")
+            _ = LoadMessages();
+        else
+            StateHasChanged();
+    }
+
+    private async Task UpdateActiveRunsCount()
+    {
+        if (string.IsNullOrEmpty(ProjectSlug)) return;
+        var activeRuns = AgentRuns.ActiveForProject(ProjectSlug);
+        ActiveRunsCount = activeRuns.Count();
     }
 
     private async Task LoadMessages()
@@ -222,6 +261,50 @@
         if (msg.MessageType == "blocker") return "high";
         if (msg.MessageType == "failure") return "high";
         if (msg.MessageType == "status") return "normal";
+        if (IsAiEventMessage(msg)) return "normal";
         return "low";
+    }
+
+    private static bool IsAiEventMessage(TeamChatMessage msg)
+    {
+        return msg.AuthorType == "agent" ||
+               msg.MessageType == "run_started" ||
+               msg.MessageType == "run_completed" ||
+               msg.MessageType == "run_failed" ||
+               msg.MessageType == "run_stopped";
+    }
+
+    private static string GetAiEventIcon(TeamChatMessage msg)
+    {
+        if (msg.MessageType == "run_started") return "▶️";
+        if (msg.MessageType == "run_completed") return "✅";
+        if (msg.MessageType == "run_failed") return "❌";
+        if (msg.MessageType == "run_stopped") return "⏹️";
+        if (msg.AuthorType == "agent") return "🤖";
+        return "📋";
+    }
+
+    private static string GetAiEventBadgeClass(TeamChatMessage msg)
+    {
+        if (msg.MessageType == "run_started") return "running";
+        if (msg.MessageType == "run_completed") return "completed";
+        if (msg.MessageType == "run_failed") return "failed";
+        if (msg.MessageType == "run_stopped") return "stopped";
+        return "neutral";
+    }
+
+    private void NavigateToTicket(int ticketId)
+    {
+        Nav.NavigateTo($"/board/{ProjectSlug}/ticket/{ticketId}");
+    }
+
+    private void ViewRun(string runId)
+    {
+        // This would open the run drawer - handled by parent component
+    }
+
+    public void Dispose()
+    {
+        AgentRuns.OnChange -= OnAgentRunsChanged;
     }
 }

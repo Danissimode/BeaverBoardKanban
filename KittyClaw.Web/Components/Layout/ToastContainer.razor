@@ -1,0 +1,81 @@
+@using KittyClaw.Web.Services
+@inject ToastService ToastService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<div class="toast-container">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast toast-@toast.Kind.ToString().ToLower()" @key="toast.Id">
+            <div class="toast-icon">@GetIcon(toast.Kind)</div>
+            <div class="toast-content">
+                <div class="toast-title">@toast.Title</div>
+                <div class="toast-body">@toast.Body</div>
+            </div>
+            @if (toast.RunId is not null)
+            {
+                <button class="toast-action" @onclick="() => WatchRun(toast.RunId)">Watch</button>
+            }
+            @if (toast.TicketId is not null)
+            {
+                <button class="toast-action" @onclick="() => ViewTicket(toast.TicketId.Value)">View</button>
+            }
+            <button class="toast-dismiss" @onclick="() => Dismiss(toast.Id)" title="Dismiss">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Toast> _toasts = new();
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnToast += OnToastReceived;
+        ToastService.OnDismiss += OnToastDismissed;
+    }
+
+    private void OnToastReceived(Toast toast)
+    {
+        _toasts.Add(toast);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnToastDismissed(string id)
+    {
+        _toasts.RemoveAll(t => t.Id == id);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Dismiss(string id)
+    {
+        ToastService.Dismiss(id);
+    }
+
+    private void WatchRun(string runId)
+    {
+        // This will be handled by the board page's run drawer
+        // For now, just dismiss
+        Dismiss(runId);
+    }
+
+    private void ViewTicket(int ticketId)
+    {
+        // Navigate to ticket - this would need to be handled by the parent
+        Dismiss(ticketId.ToString());
+    }
+
+    private static string GetIcon(ToastKind kind) => kind switch
+    {
+        ToastKind.Info => "ℹ️",
+        ToastKind.Success => "✅",
+        ToastKind.Warning => "⚠️",
+        ToastKind.Error => "❌",
+        _ => "ℹ️"
+    };
+
+    public void Dispose()
+    {
+        ToastService.OnToast -= OnToastReceived;
+        ToastService.OnDismiss -= OnToastDismissed;
+    }
+}

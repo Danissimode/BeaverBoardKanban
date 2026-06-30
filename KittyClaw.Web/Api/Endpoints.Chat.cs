@@ -1,5 +1,7 @@
 using System.Text;
 using KittyClaw.Core.Automation;
+using KittyClaw.Core.Automation.Runners;
+using KittyClaw.Core.Models;
 using KittyClaw.Core.Services;
 
 namespace KittyClaw.Web.Api;
@@ -8,6 +10,15 @@ public static partial class Endpoints
 {
     private static void MapChat(RouteGroupBuilder api)
     {
+        // Get available runners for chat (to populate runner selector)
+        api.MapGet("/chat/runners", (RunnerRegistry registry) =>
+        {
+            var runners = registry.GetAvailableRunners()
+                .Select(r => new ChatRunnerDto(r.Kind, r.DisplayName, r.IsAvailable))
+                .ToList();
+            return Results.Ok(runners);
+        }).WithTags("Chat");
+
         // Owner chat (ad-hoc Claude session)
         api.MapGet("/projects/{slug}/chat/targets", async (string slug, ProjectService ps, MemberService ms, ChatService cs) =>
         {
@@ -250,6 +261,117 @@ public static partial class Endpoints
             _ = runner.RunAsync(ctx, CancellationToken.None);
             return Results.Ok(new { runId });
         }).WithTags("Chat");
+
+        // Alternative chat endpoint that uses RunnerRegistry instead of hardcoded ClaudeRunner.
+        // This enables OpenCode or other runners for chat based on configuration.
+        api.MapPost("/projects/{slug}/chat/start-v2", async (string slug, ChatStartRequest req, ProjectService ps, MemberService ms, ChatService cs, TicketService ts, RunnerRegistry registry, AgentRunRegistry runReg, HttpContext http) =>
+        {
+            var project = await ps.GetProjectAsync(slug);
+            if (project is null) return Results.NotFound();
+
+            var target = string.IsNullOrWhiteSpace(req.Target) ? "owner-chat" : req.Target;
+            var runId = Guid.NewGuid().ToString("N");
+            var workspacePath = ps.ResolveWorkspacePath(project);
+
+            var (baseAgent, parsedTicketId) = ParseChatTarget(target);
+            var effectiveTicketId = req.TicketId ?? parsedTicketId;
+
+            // Drain pending steer messages
+            var pendingSteerMessages = runReg.LastCompletedForChatTarget(slug, target)?.DrainPendingSteerMessages();
+
+            if (req.ForceNew)
+            {
+                await cs.ClearAsync(slug, target);
+            }
+
+            // Validate and persist images
+            var (imagePaths, imageError) = await PersistChatImagesAsync(req.Images, workspacePath, runId);
+            if (imageError is not null)
+                return Results.BadRequest(new { error = "image_rejected", reason = imageError });
+
+            await cs.AppendAsync(slug, target, "user", req.Message);
+
+            // Build ticket context
+            string? ticketContext = null;
+            if (effectiveTicketId is int tid)
+            {
+                var ticket = await ts.GetTicketAsync(slug, tid);
+                if (ticket is not null)
+                {
+                    ticketContext = BuildTicketContextString(slug, tid, ticket);
+                }
+            }
+
+            // Build the prompt for the runner
+            var prompt = req.Message;
+            if (ticketContext is not null)
+            {
+                prompt = ticketContext + "\n\n## User Message\n\n" + req.Message;
+            }
+
+            // Resolve runner via registry
+            var runner = registry.ResolveRunner(ExecutionMode.DirectOpenCode);
+            if (runner is null || !runner.IsAvailable)
+            {
+                runner = registry.GetDefaultRunner();
+            }
+
+            var skillFile = target == "owner-chat" ? "chat" : $"{baseAgent}/SKILL.md";
+
+            // Build AgentRunRequest
+            var request = new AgentRunRequest
+            {
+                ProjectSlug = slug,
+                WorkspacePath = workspacePath,
+                AgentName = baseAgent,
+                SkillFile = skillFile,
+                TicketId = effectiveTicketId,
+                TicketTitle = ticketContext is not null ? $"Ticket #{effectiveTicketId}" : null,
+                TicketStatus = null,
+                TicketDescription = ticketContext,
+                Prompt = prompt,
+                ConcurrencyGroup = $"chat:{slug}:{target}",
+                RunId = runId,
+                MaxTurns = 20,
+                ExecutionMode = ExecutionMode.DirectOpenCode,
+                OnEventHook = ev => PersistChatEvent(cs, slug, target, ev),
+                ImagePaths = imagePaths,
+                ChatTarget = target,
+                Environment = new Dictionary<string, string>
+                {
+                    ["BEAVER_CHAT_TARGET"] = target,
+                    ["BEAVER_BASE_URL"] = $"{http.Request.Scheme}://{http.Request.Host}"
+                }
+            };
+
+            _ = runner.StartAsync(request, CancellationToken.None);
+            return Results.Ok(new { runId, runner = runner.Kind });
+        }).WithTags("Chat");
+    }
+    
+    /// <summary>
+    /// Builds a ticket context string for chat
+    /// </summary>
+    private static string BuildTicketContextString(string slug, int ticketId, Ticket ticket)
+    {
+        var tb = new StringBuilder();
+        tb.AppendLine($"## Current Ticket: #{ticket.Id} — {ticket.Title}");
+        tb.AppendLine();
+        tb.AppendLine($"- Status: `{ticket.Status}`");
+        tb.AppendLine($"- Priority: `{ticket.Priority}`");
+        if (!string.IsNullOrWhiteSpace(ticket.AssignedTo))
+            tb.AppendLine($"- Assigned to: `{ticket.AssignedTo}`");
+        tb.AppendLine();
+        tb.AppendLine("### Description");
+        tb.AppendLine(string.IsNullOrWhiteSpace(ticket.Description) ? "_(empty)_" : ticket.Description);
+        if (ticket.Comments.Count > 0)
+        {
+            tb.AppendLine();
+            tb.AppendLine("### Comments");
+            foreach (var c in ticket.Comments.OrderBy(c => c.CreatedAt))
+                tb.AppendLine($"- **{c.Author}** ({c.CreatedAt:g}): {c.Content}");
+        }
+        return tb.ToString();
     }
 
     /// <summary>
