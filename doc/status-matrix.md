@@ -62,7 +62,7 @@ Last updated: 2026-06-30-2
 | Runner | Status | User-facing | Notes |
 |--------|--------|-------------|-------|
 | ClaudeRunner (claude CLI) | **Done** | ✅ | Full streaming, stop, steer, max_turns, ask_user_question |
-| OpenCodeRunner | **Partial** | ✅ | CLI mode works; server mode falls back to CLI; steering via temp file; prompt via `--prompt-file` temp file; respects explicit runner override |
+| OpenCodeRunner | **Partial** | ✅ | CLI mode + HTTP/SSE server mode (POST /api/runs + SSE stream); steering via temp file; prompt via `--prompt-file`; context-{runId}.md; respects explicit runner override |
 | Chat v2 runner override | **Done** | ✅ | `req.Runner` field now respected by v2; falls back to default if unavailable |
 | RunnerRegistry | **Done** | ✅ | Abstraction over runners; default selection |
 | RunnerAvailabilityChecker | **Done** | ✅ | Detects which runners are installed |
@@ -87,7 +87,7 @@ Last updated: 2026-06-30-2
 | Execution metadata storage | **Partial** | ⚠️ | Stored in AgentRun; SQLite persistence not wired |
 | Steering (Claude) | **Done** | ✅ | Via temp file; ResumeSteerMessages pattern works |
 | Steering (OpenCode CLI) | **Partial** | ⚠️ | Steering via temp file (`.agents/tmp/steer-{runId}.txt`); requires OpenCode to poll this file |
-| Done Gate | **Future** | ❌ | Config schema exists in OpenCode-Integration.md; not enforced in code |
+| Done Gate | **Done** | ✅ | Enforced via CheckWorktreeHasChangesAsync; git diff --stat blocks Done if no changes |
 | CAO Governance | **Future** | ❌ | CaoGoverned execution mode in docs; no runner implementation |
 | TeamWorkflow (multi-agent) | **Future** | ❌ | Documented in OpenCode-Integration.md; no implementation |
 | Manual execution mode | **Done** | ✅ | Available in execution mode selector |
