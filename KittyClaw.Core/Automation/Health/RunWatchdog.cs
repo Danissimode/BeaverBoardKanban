@@ -45,9 +45,9 @@ public sealed class RunWatchdog
     /// </summary>
     public async Task CheckRunAsync(string projectSlug, AgentRun run, CancellationToken ct = default)
     {
-        if (run.StartedAt is null) return;
+        if (run.StartedAt == default) return;
         
-        var elapsed = DateTime.UtcNow - run.StartedAt.Value;
+        var elapsed = DateTime.UtcNow - run.StartedAt;
         
         // Check for excessive run duration
         if (elapsed > MaxRunDuration)
@@ -122,7 +122,7 @@ public sealed class RunWatchdog
         if (run is null) return false;
         
         // If the run was recently registered or has recent events, consider it active
-        if (run.StartedAt.HasValue && (DateTime.UtcNow - run.StartedAt.Value) < window)
+        if (run.StartedAt != default && (DateTime.UtcNow - run.StartedAt) < window)
         {
             return true;
         }

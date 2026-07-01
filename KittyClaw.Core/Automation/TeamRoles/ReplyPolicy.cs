@@ -17,6 +17,9 @@ public enum ConversationMode
     /// <summary>System activity log (lifecycle events)</summary>
     SystemActivityLog,
     
+    /// <summary>Team activity feed</summary>
+    TeamActivityLog,
+    
     /// <summary>Internal trace for debugging</summary>
     InternalTrace
 }

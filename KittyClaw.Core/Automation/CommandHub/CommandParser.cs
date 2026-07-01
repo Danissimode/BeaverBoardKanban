@@ -100,7 +100,7 @@ public sealed partial class CommandParser
         }
         
         // Health queries
-        if (ContainsAny(lower, "health", "здоровье", "ошибки", "сломано", "broken", "issues"))
+        if (ContainsAny(lower, "health", "здоровье", "ошибки", "сломано", "broken", "issues", "зависли", "stuck"))
         {
             return CreateIntent(projectSlug, messageId, CommandIntentTypes.Health, CommandRiskLevels.Low, false, text, 0.8);
         }
@@ -233,7 +233,7 @@ public sealed partial class CommandParser
         return keywords.Any(k => text.Contains(k, StringComparison.OrdinalIgnoreCase));
     }
 
-    [GeneratedRegex(@"(?:ticket|тикет|задача|#)\s*(\d+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(?:ticket|тикет|задача|#|BB-)\s*(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex TicketIdPattern();
 
     [GeneratedRegex(@"(\d+)\s*(?:задач|tasks|items)?", RegexOptions.IgnoreCase)]

@@ -46,8 +46,9 @@ public sealed class QuotaProbeService
             using var process = Process.Start(psi);
             if (process is null) return false;
             
-            var completed = await process.WaitForExitAsync(ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
-            return completed && process.ExitCode == 0;
+            var completed = process.WaitForExitAsync(ct);
+            await Task.WhenAny(completed, Task.Delay(TimeSpan.FromSeconds(5), ct));
+            return process.ExitCode == 0;
         }
         catch
         {

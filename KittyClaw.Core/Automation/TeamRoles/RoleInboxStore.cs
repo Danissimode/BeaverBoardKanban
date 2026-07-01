@@ -66,6 +66,7 @@ public sealed class RoleInboxStore
                 ProjectSlug TEXT NOT NULL,
                 RoleInboxId TEXT NOT NULL,
                 AgentProfileId TEXT NOT NULL,
+                InboxMessageId TEXT,
                 TicketId INTEGER NOT NULL,
                 Status TEXT NOT NULL DEFAULT 'pending',
                 SelectionReason TEXT,
@@ -77,6 +78,7 @@ public sealed class RoleInboxStore
             CREATE INDEX IF NOT EXISTS IX_AssignmentClaims_Agent ON AssignmentClaims (AgentProfileId);
             CREATE INDEX IF NOT EXISTS IX_AssignmentClaims_Ticket ON AssignmentClaims (TicketId);
             CREATE INDEX IF NOT EXISTS IX_AssignmentClaims_Status ON AssignmentClaims (Status);
+            CREATE INDEX IF NOT EXISTS IX_AssignmentClaims_Message ON AssignmentClaims (InboxMessageId);
             
             CREATE TABLE IF NOT EXISTS TeamMemberSessions (
                 Id TEXT NOT NULL PRIMARY KEY,
@@ -104,6 +106,13 @@ public sealed class RoleInboxStore
             CREATE INDEX IF NOT EXISTS IX_TeamMemberSessions_State ON TeamMemberSessions (State);
         """;
         await cmd.ExecuteNonQueryAsync();
+
+        // Migration: add InboxMessageId to existing AssignmentClaims tables
+        await using var migrateCmd = conn.CreateCommand();
+        migrateCmd.CommandText = """
+            ALTER TABLE AssignmentClaims ADD COLUMN InboxMessageId TEXT;
+        """;
+        try { await migrateCmd.ExecuteNonQueryAsync(); } catch { /* column may already exist */ }
     }
 
     // ── Inboxes ────────────────────────────────────────────────────────
@@ -240,13 +249,14 @@ public sealed class RoleInboxStore
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = """
             INSERT INTO AssignmentClaims 
-            (Id, ProjectSlug, RoleInboxId, AgentProfileId, TicketId, Status, SelectionReason, ClaimedAt)
-            VALUES ($id, $project, $inbox, $agent, $ticket, $status, $reason, $claimedAt)
+            (Id, ProjectSlug, RoleInboxId, AgentProfileId, InboxMessageId, TicketId, Status, SelectionReason, ClaimedAt)
+            VALUES ($id, $project, $inbox, $agent, $msgId, $ticket, $status, $reason, $claimedAt)
         """;
         cmd.Parameters.AddWithValue("$id", claim.Id);
         cmd.Parameters.AddWithValue("$project", claim.ProjectSlug);
         cmd.Parameters.AddWithValue("$inbox", claim.RoleInboxId);
         cmd.Parameters.AddWithValue("$agent", claim.AgentProfileId);
+        cmd.Parameters.AddWithValue("$msgId", (object?)claim.InboxMessageId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$ticket", claim.TicketId);
         cmd.Parameters.AddWithValue("$status", claim.Status);
         cmd.Parameters.AddWithValue("$reason", (object?)claim.SelectionReason ?? DBNull.Value);
@@ -254,6 +264,146 @@ public sealed class RoleInboxStore
         await cmd.ExecuteNonQueryAsync(ct);
 
         return claim;
+    }
+
+    /// <summary>
+    /// Atomically claim a message, create an assignment claim, and create a team member session.
+    /// Returns the created session if successful, or null if the message was already claimed.
+    /// </summary>
+    public async Task<ClaimSessionResult> ClaimAndCreateSessionAsync(
+        string projectSlug,
+        string messageId,
+        string agentId,
+        CancellationToken ct = default)
+    {
+        var dbPath = DbPath(projectSlug);
+        await EnsureTablesAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        var transaction = (SqliteTransaction)await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // 1. Claim the message (CAS — only if still pending)
+            await using var claimCmd = conn.CreateCommand();
+            claimCmd.Transaction = transaction;
+            claimCmd.CommandText = """
+                UPDATE InboxMessages 
+                SET Status = 'claimed', ClaimedByAgentId = $agentId, ClaimedAt = $now 
+                WHERE Id = $id AND ProjectSlug = $project AND Status = 'pending'
+            """;
+            claimCmd.Parameters.AddWithValue("$id", messageId);
+            claimCmd.Parameters.AddWithValue("$project", projectSlug);
+            claimCmd.Parameters.AddWithValue("$agentId", agentId);
+            claimCmd.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("o"));
+            var affected = await claimCmd.ExecuteNonQueryAsync(ct);
+
+            if (affected == 0)
+            {
+                await transaction.RollbackAsync(ct);
+                return new ClaimSessionResult
+                {
+                    Success = false,
+                    Reason = "Message already claimed or not found"
+                };
+            }
+
+            // 2. Read the message to get ticketId and inboxId
+            await using var readCmd = conn.CreateCommand();
+            readCmd.Transaction = transaction;
+            readCmd.CommandText = "SELECT * FROM InboxMessages WHERE Id = $id AND ProjectSlug = $project";
+            readCmd.Parameters.AddWithValue("$id", messageId);
+            readCmd.Parameters.AddWithValue("$project", projectSlug);
+            InboxMessage? message = null;
+            await using (var reader = await readCmd.ExecuteReaderAsync(ct))
+            {
+                if (await reader.ReadAsync(ct))
+                    message = ReadMessage(reader);
+            }
+
+            if (message is null)
+            {
+                await transaction.RollbackAsync(ct);
+                return new ClaimSessionResult { Success = false, Reason = "Message not found after claim" };
+            }
+
+            // 3. Create AssignmentClaim
+            var claim = new AssignmentClaim
+            {
+                ProjectSlug = projectSlug,
+                RoleInboxId = message.RoleInboxId,
+                AgentProfileId = agentId,
+                InboxMessageId = messageId,
+                TicketId = message.TicketId,
+                Status = ClaimStatuses.Claimed
+            };
+
+            await using var insertClaimCmd = conn.CreateCommand();
+            insertClaimCmd.Transaction = transaction;
+            insertClaimCmd.CommandText = """
+                INSERT INTO AssignmentClaims 
+                (Id, ProjectSlug, RoleInboxId, AgentProfileId, InboxMessageId, TicketId, Status, SelectionReason, ClaimedAt)
+                VALUES ($id, $project, $inbox, $agent, $msgId, $ticket, $status, $reason, $claimedAt)
+            """;
+            insertClaimCmd.Parameters.AddWithValue("$id", claim.Id);
+            insertClaimCmd.Parameters.AddWithValue("$project", claim.ProjectSlug);
+            insertClaimCmd.Parameters.AddWithValue("$inbox", claim.RoleInboxId);
+            insertClaimCmd.Parameters.AddWithValue("$agent", claim.AgentProfileId);
+            insertClaimCmd.Parameters.AddWithValue("$msgId", (object?)claim.InboxMessageId ?? DBNull.Value);
+            insertClaimCmd.Parameters.AddWithValue("$ticket", claim.TicketId);
+            insertClaimCmd.Parameters.AddWithValue("$status", claim.Status);
+            insertClaimCmd.Parameters.AddWithValue("$reason", (object?)claim.SelectionReason ?? DBNull.Value);
+            insertClaimCmd.Parameters.AddWithValue("$claimedAt", claim.ClaimedAt.ToString("o"));
+            await insertClaimCmd.ExecuteNonQueryAsync(ct);
+
+            // 4. Create TeamMemberSession
+            var session = new TeamMemberSession
+            {
+                ProjectSlug = projectSlug,
+                RoleId = message.RoleInboxId, // Note: we should resolve roleId from inbox, but we don't have it here
+                AgentProfileId = agentId,
+                TicketId = message.TicketId,
+                State = SessionStates.Assigned
+            };
+
+            await using var insertSessionCmd = conn.CreateCommand();
+            insertSessionCmd.Transaction = transaction;
+            insertSessionCmd.CommandText = """
+                INSERT INTO TeamMemberSessions 
+                (Id, ProjectSlug, RoleId, AgentProfileId, TicketId, RunId, OpencodeSessionId, ExecutionProfileId, 
+                 State, StatusMessage, JoinedAt)
+                VALUES ($id, $project, $roleId, $agentId, $ticketId, $runId, $ocSessionId, $execProfileId,
+                        $state, $statusMsg, $joinedAt)
+            """;
+            insertSessionCmd.Parameters.AddWithValue("$id", session.Id);
+            insertSessionCmd.Parameters.AddWithValue("$project", session.ProjectSlug);
+            insertSessionCmd.Parameters.AddWithValue("$roleId", session.RoleId);
+            insertSessionCmd.Parameters.AddWithValue("$agentId", session.AgentProfileId);
+            insertSessionCmd.Parameters.AddWithValue("$ticketId", session.TicketId);
+            insertSessionCmd.Parameters.AddWithValue("$runId", (object?)session.RunId ?? DBNull.Value);
+            insertSessionCmd.Parameters.AddWithValue("$ocSessionId", (object?)session.OpencodeSessionId ?? DBNull.Value);
+            insertSessionCmd.Parameters.AddWithValue("$execProfileId", (object?)session.ExecutionProfileId ?? DBNull.Value);
+            insertSessionCmd.Parameters.AddWithValue("$state", session.State);
+            insertSessionCmd.Parameters.AddWithValue("$statusMsg", (object?)session.StatusMessage ?? DBNull.Value);
+            insertSessionCmd.Parameters.AddWithValue("$joinedAt", session.JoinedAt.ToString("o"));
+            await insertSessionCmd.ExecuteNonQueryAsync(ct);
+
+            await transaction.CommitAsync(ct);
+
+            return new ClaimSessionResult
+            {
+                Success = true,
+                Message = message,
+                Claim = claim,
+                Session = session
+            };
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     // ── Sessions ───────────────────────────────────────────────────────
@@ -362,7 +512,7 @@ public sealed class RoleInboxStore
         ChatAddress = r.GetString(r.GetOrdinal("ChatAddress")),
         BaseSkillsJson = r.IsDBNull(r.GetOrdinal("BaseSkillsJson")) ? null : r.GetString(r.GetOrdinal("BaseSkillsJson")),
         Enabled = r.GetInt32(r.GetOrdinal("Enabled")) == 1,
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt")))
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime
     };
 
     private static InboxMessage ReadMessage(SqliteDataReader r) => new()
@@ -376,9 +526,9 @@ public sealed class RoleInboxStore
         RequiredSkillsJson = r.IsDBNull(r.GetOrdinal("RequiredSkillsJson")) ? null : r.GetString(r.GetOrdinal("RequiredSkillsJson")),
         Status = r.GetString(r.GetOrdinal("Status")),
         ClaimedByAgentId = r.IsDBNull(r.GetOrdinal("ClaimedByAgentId")) ? null : r.GetString(r.GetOrdinal("ClaimedByAgentId")),
-        ClaimedAt = r.IsDBNull(r.GetOrdinal("ClaimedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ClaimedAt"))),
-        ExpiresAt = r.IsDBNull(r.GetOrdinal("ExpiresAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ExpiresAt"))),
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt")))
+        ClaimedAt = r.IsDBNull(r.GetOrdinal("ClaimedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ClaimedAt"))).DateTime,
+        ExpiresAt = r.IsDBNull(r.GetOrdinal("ExpiresAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ExpiresAt"))).DateTime,
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime
     };
 
     private static TeamMemberSession ReadSession(SqliteDataReader r) => new()
@@ -393,14 +543,29 @@ public sealed class RoleInboxStore
         ExecutionProfileId = r.IsDBNull(r.GetOrdinal("ExecutionProfileId")) ? null : r.GetString(r.GetOrdinal("ExecutionProfileId")),
         State = r.GetString(r.GetOrdinal("State")),
         StatusMessage = r.IsDBNull(r.GetOrdinal("StatusMessage")) ? null : r.GetString(r.GetOrdinal("StatusMessage")),
-        JoinedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("JoinedAt"))),
-        LastActivityAt = r.IsDBNull(r.GetOrdinal("LastActivityAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("LastActivityAt"))),
-        StartedRunAt = r.IsDBNull(r.GetOrdinal("StartedRunAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("StartedRunAt"))),
-        CompletedAt = r.IsDBNull(r.GetOrdinal("CompletedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CompletedAt"))),
-        LeftAt = r.IsDBNull(r.GetOrdinal("LeftAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("LeftAt"))),
+        JoinedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("JoinedAt"))).DateTime,
+        LastActivityAt = r.IsDBNull(r.GetOrdinal("LastActivityAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("LastActivityAt"))).DateTime,
+        StartedRunAt = r.IsDBNull(r.GetOrdinal("StartedRunAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("StartedRunAt"))).DateTime,
+        CompletedAt = r.IsDBNull(r.GetOrdinal("CompletedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CompletedAt"))).DateTime,
+        LeftAt = r.IsDBNull(r.GetOrdinal("LeftAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("LeftAt"))).DateTime,
         Summary = r.IsDBNull(r.GetOrdinal("Summary")) ? null : r.GetString(r.GetOrdinal("Summary")),
         EvidenceJson = r.IsDBNull(r.GetOrdinal("EvidenceJson")) ? null : r.GetString(r.GetOrdinal("EvidenceJson")),
         ExitStatus = r.IsDBNull(r.GetOrdinal("ExitStatus")) ? null : r.GetString(r.GetOrdinal("ExitStatus"))
+    };
+
+    private static AssignmentClaim ReadClaim(SqliteDataReader r) => new()
+    {
+        Id = r.GetString(r.GetOrdinal("Id")),
+        ProjectSlug = r.GetString(r.GetOrdinal("ProjectSlug")),
+        RoleInboxId = r.GetString(r.GetOrdinal("RoleInboxId")),
+        AgentProfileId = r.GetString(r.GetOrdinal("AgentProfileId")),
+        InboxMessageId = r.IsDBNull(r.GetOrdinal("InboxMessageId")) ? null : r.GetString(r.GetOrdinal("InboxMessageId")),
+        TicketId = r.GetInt32(r.GetOrdinal("TicketId")),
+        Status = r.GetString(r.GetOrdinal("Status")),
+        SelectionReason = r.IsDBNull(r.GetOrdinal("SelectionReason")) ? null : r.GetString(r.GetOrdinal("SelectionReason")),
+        SessionId = r.IsDBNull(r.GetOrdinal("SessionId")) ? null : r.GetString(r.GetOrdinal("SessionId")),
+        ClaimedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ClaimedAt"))).DateTime,
+        CompletedAt = r.IsDBNull(r.GetOrdinal("CompletedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CompletedAt"))).DateTime
     };
 
     // ── Conversation Policy ────────────────────────────────────────────
@@ -477,6 +642,6 @@ public sealed class RoleInboxStore
         AutoSummarizeRoleResponses = r.GetInt32(r.GetOrdinal("AutoSummarizeRoleResponses")) == 1,
         ShowCriticalEventsInMain = r.GetInt32(r.GetOrdinal("ShowCriticalEventsInMain")) == 1,
         AlwaysVisibleRolesJson = r.IsDBNull(r.GetOrdinal("AlwaysVisibleRolesJson")) ? null : r.GetString(r.GetOrdinal("AlwaysVisibleRolesJson")),
-        UpdatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("UpdatedAt")))
+        UpdatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("UpdatedAt"))).DateTime
     };
 }

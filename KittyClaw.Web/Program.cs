@@ -1,9 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KittyClaw.Core.Automation;
+using KittyClaw.Core.Automation.CommandHub;
+using KittyClaw.Core.Automation.Health;
 using KittyClaw.Core.Automation.Runners;
-using KittyClaw.Core.Integrations.OpenCode;
 using KittyClaw.Core.Automation.Runtimes;
+using KittyClaw.Core.Automation.TeamRoles;
+using KittyClaw.Core.Integrations.OpenCode;
 using KittyClaw.Core.Services;
 using KittyClaw.Core.TeamChat;
 using KittyClaw.Web.Api;
@@ -59,6 +62,10 @@ builder.Services.AddSingleton<TeamRoleStore>(sp =>
 builder.Services.AddSingleton<RoleInboxStore>(sp =>
     new RoleInboxStore(dataDir, sp.GetRequiredService<ILogger<RoleInboxStore>>()));
 builder.Services.AddSingleton<MessageRouter>();
+// TODO: Add these services when implemented
+// builder.Services.AddSingleton<AgentSelector>();
+// builder.Services.AddSingleton<RolePolicyEvaluator>();
+// builder.Services.AddSingleton<OrchestrationService>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardFilterState>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardSortState>();
 builder.Services.AddSingleton<SettingsService>();

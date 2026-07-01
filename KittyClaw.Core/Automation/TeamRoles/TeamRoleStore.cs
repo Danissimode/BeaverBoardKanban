@@ -268,6 +268,40 @@ public sealed class TeamRoleStore
         return profile;
     }
 
+    public async Task<List<ExecutionProfile>> GetExecutionProfilesAsync(string projectSlug, CancellationToken ct = default)
+    {
+        var dbPath = DbPath(projectSlug);
+        await EnsureTablesAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM ExecutionProfiles WHERE ProjectSlug = $project AND Enabled = 1";
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var results = new List<ExecutionProfile>();
+        while (await reader.ReadAsync(ct))
+            results.Add(ReadExecutionProfile(reader));
+        return results;
+    }
+
+    public async Task<ExecutionProfile?> GetExecutionProfileAsync(string projectSlug, string profileId, CancellationToken ct = default)
+    {
+        var dbPath = DbPath(projectSlug);
+        await EnsureTablesAsync(dbPath);
+
+        await using var conn = new SqliteConnection($"Data Source={dbPath}");
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM ExecutionProfiles WHERE ProjectSlug = $project AND Id = $id LIMIT 1";
+        cmd.Parameters.AddWithValue("$project", projectSlug);
+        cmd.Parameters.AddWithValue("$id", profileId);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        return await reader.ReadAsync(ct) ? ReadExecutionProfile(reader) : null;
+    }
+
     // ── Ticket Assignments ─────────────────────────────────────────────
 
     public async Task<TicketRoleAssignment?> GetAssignmentAsync(string projectSlug, int ticketId, CancellationToken ct = default)
@@ -371,7 +405,24 @@ public sealed class TeamRoleStore
         CapabilitiesJson = r.IsDBNull(r.GetOrdinal("CapabilitiesJson")) ? null : r.GetString(r.GetOrdinal("CapabilitiesJson")),
         RiskLimit = r.GetString(r.GetOrdinal("RiskLimit")),
         Enabled = r.GetInt32(r.GetOrdinal("Enabled")) == 1,
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt")))
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime
+    };
+
+    private static ExecutionProfile ReadExecutionProfile(SqliteDataReader r) => new()
+    {
+        Id = r.GetString(r.GetOrdinal("Id")),
+        ProjectSlug = r.GetString(r.GetOrdinal("ProjectSlug")),
+        Name = r.GetString(r.GetOrdinal("Name")),
+        Runtime = r.GetString(r.GetOrdinal("Runtime")),
+        Provider = r.IsDBNull(r.GetOrdinal("Provider")) ? null : r.GetString(r.GetOrdinal("Provider")),
+        Model = r.IsDBNull(r.GetOrdinal("Model")) ? null : r.GetString(r.GetOrdinal("Model")),
+        OpencodeModel = r.IsDBNull(r.GetOrdinal("OpencodeModel")) ? null : r.GetString(r.GetOrdinal("OpencodeModel")),
+        PermissionsJson = r.IsDBNull(r.GetOrdinal("PermissionsJson")) ? null : r.GetString(r.GetOrdinal("PermissionsJson")),
+        WorktreeRequired = r.GetInt32(r.GetOrdinal("WorktreeRequired")) == 1,
+        MaxTurns = r.GetInt32(r.GetOrdinal("MaxTurns")),
+        TimeoutMinutes = r.GetInt32(r.GetOrdinal("TimeoutMinutes")),
+        Enabled = r.GetInt32(r.GetOrdinal("Enabled")) == 1,
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime
     };
 
     private static AgentProfile ReadAgent(SqliteDataReader r) => new()
@@ -385,7 +436,7 @@ public sealed class TeamRoleStore
         MaxConcurrentRuns = r.GetInt32(r.GetOrdinal("MaxConcurrentRuns")),
         CurrentRunCount = r.GetInt32(r.GetOrdinal("CurrentRunCount")),
         Enabled = r.GetInt32(r.GetOrdinal("Enabled")) == 1,
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt")))
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime
     };
 
     private static TicketRoleAssignment ReadAssignment(SqliteDataReader r) => new()
@@ -410,6 +461,6 @@ public sealed class TeamRoleStore
         ConditionJson = r.IsDBNull(r.GetOrdinal("ConditionJson")) ? null : r.GetString(r.GetOrdinal("ConditionJson")),
         Reason = r.IsDBNull(r.GetOrdinal("Reason")) ? null : r.GetString(r.GetOrdinal("Reason")),
         Enabled = r.GetInt32(r.GetOrdinal("Enabled")) == 1,
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt")))
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime
     };
 }
