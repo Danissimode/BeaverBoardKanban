@@ -108,6 +108,37 @@ public static class EndpointsRoster
         .WithName("UpdateFallback")
         .WithDescription("Update a fallback policy");
 
+        // ── OpenCode config generation ──────────────────────────────────
+        group.MapGet("/opencode-config", (RosterStore store) =>
+        {
+            var profiles = new Dictionary<string, Core.Automation.Runtimes.ModelProfileConfig>();
+            // TODO: Load profiles from AgentRuntimeProjectConfig
+            
+            var generator = new Core.Integrations.OpenCode.OpenCodeConfigGenerator(store, profiles);
+            var configJson = generator.ToJson();
+            return Results.Content(configJson, "application/json");
+        })
+        .WithName("GenerateOpenCodeConfig")
+        .WithDescription("Generate OpenCode agent configuration from active roster");
+
+        group.MapPost("/opencode-config/write", (RosterStore store, IConfiguration config) =>
+        {
+            var profiles = new Dictionary<string, Core.Automation.Runtimes.ModelProfileConfig>();
+            // TODO: Load profiles from AgentRuntimeProjectConfig
+            
+            var generator = new Core.Integrations.OpenCode.OpenCodeConfigGenerator(store, profiles);
+            var configJson = generator.ToJson();
+            
+            // Write to workspace opencode.json
+            var workspacePath = config["WorkspacePath"] ?? Directory.GetCurrentDirectory();
+            var opencodeConfigPath = Path.Combine(workspacePath, "opencode.json");
+            File.WriteAllText(opencodeConfigPath, configJson);
+            
+            return Results.Ok(new { path = opencodeConfigPath, written = true });
+        })
+        .WithName("WriteOpenCodeConfig")
+        .WithDescription("Write OpenCode configuration to workspace");
+
         // ── Resolution preview ─────────────────────────────────────────
         group.MapPost("/resolve/{ticketId}", (
             int ticketId,
