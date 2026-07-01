@@ -74,43 +74,83 @@ Each card is not just a task. It can become an executable workflow connected to 
 
 Beaver Board Kanban is designed with OpenCode as the primary execution layer. The board sends task context to OpenCode agents and receives progress, blockers, and evidence back into the board.
 
-> **Status:** This integration is planned and under active development. See [docs/OpenCode-Integration.md](docs/OpenCode-Integration.md) for the full integration architecture and roadmap.
+> **Status:** Partially implemented. OpenCode CLI and SSE server mode exist in code, but the default execution path currently uses the Claude Code CLI. See [docs/OpenCode-Integration.md](docs/OpenCode-Integration.md) for the integration architecture.
+
+### Provider & model flexibility
+
+Beaver Board supports multiple execution backends through a profile-based system:
+
+- **Runtime** — Claude Code CLI (default), OpenCode CLI, or future runners
+- **Model** — per-role default with per-card override
+- **Role** — programmer, builder, reviewer, security-reviewer, etc.
+
+You configure defaults at the project level and override per ticket. The board automatically routes each card to the right backend based on its profile.
 
 ---
 
 ## Example workflow
 
 1. Create a card: `BB-102 Refactor Auth API`
-2. Assign it to `Agent-Roo`
-3. Send task context to OpenCode
+2. Assign it to `programmer` with role `programmer`
+3. Board sends task context to the agent's runtime (Claude Code CLI by default)
 4. Agent moves the card to `In Progress`
 5. Agent asks a question in shared command chat
 6. Developer approves the decision
 7. Agent attaches test output and report
-8. Card moves to `Review`
+8. Card moves to `Review` when reviewer + riskLevel are set
 
 ---
 
 ## Getting Started
 
-### Prerequisites
+### Install for users (macOS Apple Silicon)
 
+1. Download `BeaverBoard-0.1.0-macOS-arm64.dmg` from [GitHub Releases](https://github.com/Danissimode/BeaverBoardKanban/releases).
+2. Open the DMG and drag `BeaverBoard.app` to **Applications**.
+3. Double-click `Beaver Board` from Launchpad or Spotlight.
+4. The app starts a local backend on `127.0.0.1:5230` and opens your browser.
+
+> **Note:** Preview builds are unsigned. macOS may ask you to approve the app in **System Settings → Privacy & Security** the first time.
+
+### Data storage
+
+- **macOS:** `~/Library/Application Support/BeaverBoard/`
+- **Linux:** `~/.local/share/beaver-board/`
+- **Windows:** `%APPDATA%\BeaverBoard\`
+
+Override with the `BEAVERBOARD_DATA_DIR` environment variable.
+
+### Run from source (developers)
+
+Prerequisites:
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Claude Code CLI](https://docs.claude.com/en/docs/claude-code/overview) — `claude` on your PATH
-- [Git](https://git-scm.com/downloads) — `git` on your PATH
-
-On first launch an onboarding popup detects whether `claude` and `git` are available. You can continue without them, but agent runs and auto-commits will fail until they are installed and on the PATH.
-
-### Run
+- [Claude Code CLI](https://docs.claude.com/en/docs/claude-code/overview) — `claude` on your PATH (optional, for agent runs)
+- [Git](https://git-scm.com/downloads) — `git` on your PATH (optional, for auto-commits)
 
 From the repo root:
 
-```
-run.bat        (Windows)
-./run.sh       (macOS / Linux)
+```bash
+# macOS / Linux
+./run.sh
+
+# Windows
+run.bat
 ```
 
-Both wrap `dotnet watch --project KittyClaw.Web --non-interactive` and serve Beaver Board Kanban at **http://localhost:5230** with hot reload enabled.
+Both wrap `dotnet watch --project KittyClaw.Web --non-interactive` and serve Beaver Board at `http://127.0.0.1:5230` with hot reload.
+
+### Build for maintainers
+
+```bash
+# macOS app bundle
+scripts/release/build-macos.sh 0.1.0 osx-arm64
+
+# DMG
+scripts/release/package-dmg.sh 0.1.0 arm64
+
+# Checksums
+scripts/release/sha256.sh
+```
 
 ### Creating a project
 
@@ -123,18 +163,6 @@ From the home page, type a name and click **Create**. A popup asks you to set a 
 5. Navigate to the board.
 
 The workspace folder itself is never deleted by Beaver Board, even when you delete a project.
-
-### Data Storage
-
-All Beaver Board data is stored locally in `%APPDATA%/BeaverBoard/` (configurable via `BEAVERBOARD_DATA_DIR`, falls back to `KITTYCLAW_DATA_DIR` for existing setups):
-
-- `registry.db` — project registry
-- `projects/{slug}.db` — per-project database (tickets, comments, labels, columns, members)
-- `uploads/` — uploaded images
-- `runs/{runId}.json` — agent run snapshots (events, status, exit code)
-- `settings.json` — language + onboarding flag
-
-> **Migration:** If you were using `%APPDATA%/KittyClaw/`, Beaver Board will automatically pick up your existing data via the `KITTYCLAW_DATA_DIR` fallback. A clean install uses `%APPDATA%/BeaverBoard/` by default.
 
 Per-project agent state lives **in the workspace**: `<workspace>/.agents/{agent}/memory/` (scored `MEMORY.md` index + per-topic lesson files), `<workspace>/.agents/channel/` (session state), etc.
 
@@ -284,7 +312,7 @@ Tiles can be created from the dashboard's AI chat panel by describing what you w
 
 ## Project status
 
-**v0.9.0 — ready for tagging as v1.0.0.** Core execution engine, IDE/API bridge, token economy, and public repo safety are all implemented. See the full [status matrix](doc/status-matrix.md) for feature-level detail.
+**v0.1.0-preview** — packaging-ready, feature-complete for preview. Not yet a stable public release. See the [release readiness matrix](docs/release-readiness.md) for a feature-level breakdown of what's implemented, partially implemented, experimental, and planned.
 
 ---
 
@@ -297,11 +325,10 @@ Tiles can be created from the dashboard's AI chat panel by describing what you w
 - CI pipeline (build + test + audit + Gitleaks)
 
 ### Phase 2 — Execution Core MVP ✅
-- OpenCode runner (CLI + SSE server mode)
 - Claude runner (streaming, stop, steer)
 - AgentRunDrawer with live SSE stream
 - Ticket execution persistence (survives app restarts)
-- Done Gate (blocks Done if no git changes)
+- Done Gate (blocks Done if no reviewer/riskLevel)
 
 ### Phase 3 — Evidence + Done Gate ✅
 - Evidence attachment on tickets
@@ -327,10 +354,14 @@ Tiles can be created from the dashboard's AI chat panel by describing what you w
 - SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md
 - Release workflow, PR template, doctor CLI
 
-### Phase 9 — Release ✅
-- `beaverboard doctor` CLI (`scripts/beaverboard-doctor.sh`)
-- Demo board (`examples/demo-board/`)
-- Ready to tag v1.0.0
+### Phase 9 — Release 🟡 (in progress)
+- macOS `.app` + DMG packaging ✅
+- Self-contained backend with runtime lock ✅
+- Public baseline audit ✅
+- Homebrew Cask draft 🟡
+- Signed / notarized DMG 📋
+- Demo board showcase 📋
+- Ready to tag v1.0.0 📋
 
 ---
 
