@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">
+  <defs>
+    <linearGradient id="orange6" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="600" height="200" fill="#09090B"/>
+  
+  <!-- Beaver icon -->
+  <g transform="translate(30, 20) scale(0.7)">
+    <!-- Hard hat -->
+    <ellipse cx="100" cy="50" rx="60" ry="20" fill="#F97316"/>
+    <path d="M50 50 Q55 15 100 8 Q145 15 150 50" fill="#F97316"/>
+    <rect x="42" y="46" width="116" height="10" rx="5" fill="#EA580C"/>
+    
+    <!-- Head -->
+    <ellipse cx="100" cy="90" rx="50" ry="42" fill="#8B4513"/>
+    <ellipse cx="100" cy="87" rx="40" ry="34" fill="#A0522D"/>
+    
+    <!-- Eyes -->
+    <ellipse cx="82" cy="80" rx="8" ry="10" fill="white"/>
+    <ellipse cx="118" cy="80" rx="8" ry="10" fill="white"/>
+    <circle cx="84" cy="81" r="5" fill="#1a1a1a"/>
+    <circle cx="120" cy="81" r="5" fill="#1a1a1a"/>
+    <circle cx="86" cy="79" r="2" fill="white"/>
+    <circle cx="122" cy="79" r="2" fill="white"/>
+    
+    <!-- Nose -->
+    <ellipse cx="100" cy="95" rx="8" ry="6" fill="#5D3A1A"/>
+    
+    <!-- Teeth -->
+    <rect x="94" y="105" width="6" height="10" rx="2" fill="white"/>
+    <rect x="101" y="105" width="6" height="10" rx="2" fill="white"/>
+    
+    <!-- Body -->
+    <ellipse cx="100" cy="155" rx="55" ry="45" fill="#8B4513"/>
+    <ellipse cx="100" cy="152" rx="44" ry="36" fill="#A0522D"/>
+    
+    <!-- Vest -->
+    <path d="M65 130 L58 175 L142 175 L135 130 Z" fill="#F97316" opacity="0.9"/>
+    
+    <!-- Tablet -->
+    <rect x="68" y="148" width="64" height="42" rx="5" fill="#18181B" stroke="#3F3F46" stroke-width="1"/>
+    <rect x="72" y="155" width="16" height="10" rx="2" fill="#F97316"/>
+    <rect x="72" y="168" width="16" height="8" rx="2" fill="#F59E0B"/>
+    <rect x="92" y="157" width="16" height="8" rx="2" fill="#3B82F6"/>
+    <rect x="92" y="168" width="16" height="10" rx="2" fill="#3ECF8E"/>
+    <rect x="112" y="159" width="16" height="8" rx="2" fill="#F97316"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="180" y="95" font-family="Inter, -apple-system, sans-serif" font-size="56" font-weight="700" fill="#FAFAFA" letter-spacing="-2">Beaver</text>
+  <text x="180" y="155" font-family="Inter, -apple-system, sans-serif" font-size="56" font-weight="700" fill="url(#orange6)" letter-spacing="-2">Board</text>
+</svg>

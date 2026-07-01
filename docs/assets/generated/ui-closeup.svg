@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#09090B"/>
+      <stop offset="100%" stop-color="#111113"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="1200" height="630" fill="url(#bg3)"/>
+  
+  <!-- Title bar -->
+  <rect x="0" y="0" width="1200" height="48" fill="#111113" stroke="#27272A" stroke-width="0 0 1 0"/>
+  <line x1="0" y1="48" x2="1200" y2="48" stroke="#27272A" stroke-width="1"/>
+  
+  <!-- Logo area -->
+  <g transform="translate(20, 12)">
+    <circle cx="12" cy="12" r="10" fill="#F97316"/>
+    <text x="12" y="16" font-family="sans-serif" font-size="10" fill="white" text-anchor="middle">B</text>
+  </g>
+  <text x="42" y="30" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#FAFAFA">Beaver Board</text>
+  
+  <!-- Search -->
+  <rect x="200" y="12" width="300" height="28" rx="6" fill="#18181B" stroke="#3F3F46" stroke-width="1"/>
+  <text x="215" y="30" font-family="Inter, sans-serif" font-size="11" fill="#71717A">🔍 Search tasks...</text>
+  
+  <!-- New task button -->
+  <rect x="1050" y="12" width="120" height="28" rx="6" fill="#F97316"/>
+  <text x="1110" y="30" font-family="Inter, sans-serif" font-size="11" fill="white" text-anchor="middle" font-weight="500">+ New Task</text>
+  
+  <!-- Sidebar -->
+  <rect x="0" y="48" width="200" height="582" fill="#111113" stroke="#27272A" stroke-width="1" stroke-dasharray="0 1 0 0"/>
+  
+  <g transform="translate(16, 68)">
+    <text x="0" y="0" font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A" letter-spacing="0.1em">NAVIGATION</text>
+    
+    <rect x="-4" y="14" width="180" height="32" rx="6" fill="#F97316" opacity="0.12"/>
+    <text x="12" y="34" font-family="Inter, sans-serif" font-size="12" fill="#F97316">📋 Board</text>
+    
+    <text x="12" y="66" font-family="Inter, sans-serif" font-size="12" fill="#A1A1AA">📊 Dashboard</text>
+    <text x="12" y="96" font-family="Inter, sans-serif" font-size="12" fill="#A1A1AA">🤖 Agents</text>
+    <text x="12" y="126" font-family="Inter, sans-serif" font-size="12" fill="#A1A1AA">▶ Runs</text>
+    <text x="12" y="156" font-family="Inter, sans-serif" font-size="12" fill="#A1A1AA">📝 Reports</text>
+    <text x="12" y="186" font-family="Inter, sans-serif" font-size="12" fill="#A1A1AA">⚙ Settings</text>
+  </g>
+  
+  <!-- Project info -->
+  <g transform="translate(16, 280)">
+    <text x="0" y="0" font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A" letter-spacing="0.1em">PROJECT</text>
+    <text x="0" y="20" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Beaver Board</text>
+    <text x="0" y="38" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A">v0.9.0 • 8 agents</text>
+  </g>
+  
+  <!-- KANBAN COLUMNS -->
+  <g transform="translate(220, 60)">
+    <!-- Backlog -->
+    <g>
+      <text x="0" y="20" font-family="Inter, sans-serif" font-size="13" fill="#FAFAFA" font-weight="600">Backlog</text>
+      <text x="70" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717A">5</text>
+      
+      <!-- Card 1 -->
+      <rect x="0" y="35" width="230" height="90" rx="8" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+      <text x="12" y="55" font-family="JetBrains Mono, monospace" font-size="10" fill="#F97316">BB-103</text>
+      <text x="12" y="72" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Document auth architecture</text>
+      <text x="12" y="88" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">Write docs for JWT middleware</text>
+      <rect x="12" y="98" width="50" height="16" rx="4" fill="#27272A"/>
+      <text x="37" y="109" font-family="JetBrains Mono, monospace" font-size="8" fill="#71717A" text-anchor="middle">backend</text>
+      <rect x="68" y="98" width="45" height="16" rx="4" fill="#27272A"/>
+      <text x="90" y="109" font-family="JetBrains Mono, monospace" font-size="8" fill="#71717A" text-anchor="middle">docs</text>
+      
+      <!-- Card 2 -->
+      <rect x="0" y="140" width="230" height="80" rx="8" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+      <text x="12" y="160" font-family="JetBrains Mono, monospace" font-size="10" fill="#F59E0B">BB-104</text>
+      <text x="12" y="177" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Add unit tests for auth</text>
+      <rect x="12" y="192" width="60" height="16" rx="4" fill="#27272A"/>
+      <text x="42" y="203" font-family="JetBrains Mono, monospace" font-size="8" fill="#71717A" text-anchor="middle">testing</text>
+      
+      <!-- Card 3 -->
+      <rect x="0" y="235" width="230" height="70" rx="8" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+      <text x="12" y="255" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A">BB-105</text>
+      <text x="12" y="272" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Setup CI pipeline</text>
+    </g>
+    
+    <!-- In Progress -->
+    <g transform="translate(255, 0)">
+      <text x="0" y="20" font-family="Inter, sans-serif" font-size="13" fill="#3B82F6" font-weight="600">In Progress</text>
+      <text x="90" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717A">3</text>
+      
+      <!-- Card with agent -->
+      <rect x="0" y="35" width="230" height="110" rx="8" fill="#18181B" stroke="#3B82F6" stroke-width="1.5"/>
+      <circle cx="218" cy="42" r="6" fill="#3B82F6" opacity="0.8"/>
+      <text x="12" y="55" font-family="JetBrains Mono, monospace" font-size="10" fill="#3B82F6">BB-102</text>
+      <text x="12" y="72" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Refactor legacy JWT middleware</text>
+      <text x="12" y="88" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">Replace deprecated auth library</text>
+      
+      <!-- Agent badge -->
+      <rect x="12" y="95" width="100" height="20" rx="10" fill="#3B82F6" opacity="0.15"/>
+      <circle cx="26" cy="105" r="4" fill="#3B82F6"/>
+      <text x="36" y="109" font-family="JetBrains Mono, monospace" font-size="9" fill="#3B82F6">Agent-Roo</text>
+      
+      <text x="130" y="109" font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A">02m 14s</text>
+      
+      <rect x="12" y="120" width="45" height="16" rx="4" fill="#27272A"/>
+      <text x="34" y="131" font-family="JetBrains Mono, monospace" font-size="8" fill="#71717A" text-anchor="middle">backend</text>
+      
+      <!-- Card 2 -->
+      <rect x="0" y="160" width="230" height="80" rx="8" fill="#18181B" stroke="#3B82F6" stroke-width="1"/>
+      <circle cx="218" cy="167" r="6" fill="#3B82F6" opacity="0.8"/>
+      <text x="12" y="180" font-family="JetBrains Mono, monospace" font-size="10" fill="#F97316">BB-101</text>
+      <text x="12" y="197" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Fix dark mode toggle</text>
+      <rect x="12" y="212" width="90" height="20" rx="10" fill="#3B82F6" opacity="0.15"/>
+      <circle cx="26" cy="222" r="4" fill="#3B82F6"/>
+      <text x="36" y="226" font-family="JetBrains Mono, monospace" font-size="9" fill="#3B82F6">Agent-Coder</text>
+      
+      <!-- Card 3 -->
+      <rect x="0" y="255" width="230" height="65" rx="8" fill="#18181B" stroke="#27272A" stroke-width="1"/>
+      <text x="12" y="275" font-family="JetBrains Mono, monospace" font-size="10" fill="#F59E0B">BB-100</text>
+      <text x="12" y="292" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Update README badges</text>
+    </g>
+    
+    <!-- Review -->
+    <g transform="translate(510, 0)">
+      <text x="0" y="20" font-family="Inter, sans-serif" font-size="13" fill="#F59E0B" font-weight="600">Review</text>
+      <text x="55" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717A">2</text>
+      
+      <rect x="0" y="35" width="230" height="90" rx="8" fill="#18181B" stroke="#F59E0B" stroke-width="1"/>
+      <text x="12" y="55" font-family="JetBrains Mono, monospace" font-size="10" fill="#F59E0B">BB-099</text>
+      <text x="12" y="72" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Implement dark mode toggle</text>
+      <text x="12" y="88" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">Evidence: Tests passed, Diff ready</text>
+      <rect x="12" y="98" width="80" height="16" rx="4" fill="#3ECF8E" opacity="0.12"/>
+      <text x="52" y="109" font-family="JetBrains Mono, monospace" font-size="8" fill="#3ECF8E" text-anchor="middle">✓ 3/3 Tests</text>
+      
+      <rect x="0" y="140" width="230" height="75" rx="8" fill="#18181B" stroke="#F59E0B" stroke-width="1"/>
+      <text x="12" y="160" font-family="JetBrains Mono, monospace" font-size="10" fill="#F59E0B">BB-097</text>
+      <text x="12" y="177" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500">Update dependencies</text>
+      <rect x="12" y="187" width="60" height="16" rx="4" fill="#3ECF8E" opacity="0.12"/>
+      <text x="42" y="198" font-family="JetBrains Mono, monospace" font-size="8" fill="#3ECF8E" text-anchor="middle">✓ PR #41</text>
+    </g>
+    
+    <!-- Done -->
+    <g transform="translate(765, 0)">
+      <text x="0" y="20" font-family="Inter, sans-serif" font-size="13" fill="#3ECF8E" font-weight="600">Done</text>
+      <text x="42" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717A">4</text>
+      
+      <rect x="0" y="35" width="230" height="70" rx="8" fill="#18181B" stroke="#3ECF8E" stroke-width="1" opacity="0.7"/>
+      <text x="12" y="55" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">BB-098 ✓</text>
+      <text x="12" y="72" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500" opacity="0.7">Setup project template</text>
+      <text x="12" y="88" font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A">Merged to main</text>
+      
+      <rect x="0" y="118" width="230" height="65" rx="8" fill="#18181B" stroke="#3ECF8E" stroke-width="1" opacity="0.7"/>
+      <text x="12" y="138" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">BB-096 ✓</text>
+      <text x="12" y="155" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500" opacity="0.7">Initial kanban board</text>
+      
+      <rect x="0" y="198" width="230" height="65" rx="8" fill="#18181B" stroke="#3ECF8E" stroke-width="1" opacity="0.7"/>
+      <text x="12" y="218" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">BB-095 ✓</text>
+      <text x="12" y="235" font-family="Inter, sans-serif" font-size="12" fill="#FAFAFA" font-weight="500" opacity="0.7">Blazor Server setup</text>
+    </g>
+  </g>
+  
+  <!-- Status bar -->
+  <rect x="0" y="600" width="1200" height="30" fill="#111113" stroke="#27272A" stroke-width="1" stroke-dasharray="1 0 0 0"/>
+  <text x="16" y="618" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A">Last sync: 2 min ago</text>
+  <text x="200" y="618" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">● All agents healthy</text>
+  <text x="400" y="618" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A">Model: gpt-4o</text>
+  <text x="550" y="618" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A">Runtime: 2m 34s</text>
+  <text x="1100" y="618" font-family="JetBrains Mono, monospace" font-size="10" fill="#F97316">Open Details →</text>
+</svg>

@@ -42,7 +42,7 @@
   <sub>↑ Everything in context: tasks, code changes, and AI conversations</sub>
 </p>
 
-> **Note**: PNG assets are generated from the [readme-assets-generator-3.html](docs/assets/readme-assets-generator-3.html) template. See the [branding guide](docs/branding-guide.md) for details.
+> **Note**: PNG assets are generated from SVG sources in `docs/assets/generated/`. Edit the `.svg` files and re-render with `rsvg-convert`. See the [design system](design-system/beaver-board-design-system.html) and [branding guide](branding/beaver-board/README.md) for details.
 
 ---
 

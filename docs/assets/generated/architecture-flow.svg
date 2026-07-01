@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 450" width="1200" height="450">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#09090B"/>
+      <stop offset="100%" stop-color="#111113"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#F97316"/>
+    </marker>
+    <filter id="glow2">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  
+  <rect width="1200" height="450" fill="url(#bg2)"/>
+  
+  <!-- Title -->
+  <text x="600" y="40" font-family="Inter, sans-serif" font-size="18" font-weight="600" fill="#FAFAFA" text-anchor="middle">How Beaver Board Works</text>
+  <text x="600" y="62" font-family="JetBrains Mono, monospace" font-size="12" fill="#71717A" text-anchor="middle">Task Cards → AI Agents → Code Execution → Evidence</text>
+  
+  <!-- KANBAN BOARD -->
+  <g transform="translate(50, 90)">
+    <rect x="0" y="0" width="300" height="320" rx="14" fill="#111113" stroke="#3F3F46" stroke-width="1.5"/>
+    <text x="150" y="32" font-family="JetBrains Mono, monospace" font-size="13" fill="#71717A" text-anchor="middle" font-weight="500">KANBAN BOARD</text>
+    
+    <!-- Columns -->
+    <rect x="15" y="50" width="82" height="255" rx="8" fill="#18181B" stroke="#27272A" stroke-width="0.5"/>
+    <text x="56" y="72" font-family="Inter, sans-serif" font-size="11" fill="#A1A1AA" text-anchor="middle" font-weight="500">Backlog</text>
+    
+    <rect x="109" y="50" width="82" height="255" rx="8" fill="#18181B" stroke="#27272A" stroke-width="0.5"/>
+    <text x="150" y="72" font-family="Inter, sans-serif" font-size="11" fill="#A1A1AA" text-anchor="middle" font-weight="500">In Progress</text>
+    
+    <rect x="203" y="50" width="82" height="255" rx="8" fill="#18181B" stroke="#27272A" stroke-width="0.5"/>
+    <text x="244" y="72" font-family="Inter, sans-serif" font-size="11" fill="#A1A1AA" text-anchor="middle" font-weight="500">Review</text>
+    
+    <!-- Backlog cards -->
+    <rect x="22" y="85" width="68" height="45" rx="5" fill="#27272A" stroke="#3F3F46" stroke-width="0.5"/>
+    <text x="56" y="102" font-family="JetBrains Mono, monospace" font-size="9" fill="#F97316" text-anchor="middle">BB-103</text>
+    <text x="56" y="116" font-family="Inter, sans-serif" font-size="8" fill="#A1A1AA" text-anchor="middle">Refactor API</text>
+    <rect x="26" y="122" width="24" height="4" rx="2" fill="#F97316" opacity="0.3"/>
+    
+    <rect x="22" y="140" width="68" height="40" rx="5" fill="#27272A" stroke="#3F3F46" stroke-width="0.5"/>
+    <text x="56" y="157" font-family="JetBrains Mono, monospace" font-size="9" fill="#F59E0B" text-anchor="middle">BB-104</text>
+    <text x="56" y="170" font-family="Inter, sans-serif" font-size="8" fill="#A1A1AA" text-anchor="middle">Add tests</text>
+    
+    <rect x="22" y="190" width="68" height="35" rx="5" fill="#27272A" stroke="#3F3F46" stroke-width="0.5"/>
+    <text x="56" y="210" font-family="JetBrains Mono, monospace" font-size="9" fill="#71717A" text-anchor="middle">BB-105</text>
+    
+    <!-- In Progress cards -->
+    <rect x="116" y="85" width="68" height="50" rx="5" fill="#27272A" stroke="#3B82F6" stroke-width="1.5"/>
+    <circle cx="175" cy="90" r="5" fill="#3B82F6" filter="url(#glow2)"/>
+    <text x="150" y="105" font-family="JetBrains Mono, monospace" font-size="9" fill="#3B82F6" text-anchor="middle">BB-102</text>
+    <text x="150" y="118" font-family="Inter, sans-serif" font-size="8" fill="#A1A1AA" text-anchor="middle">JWT Auth</text>
+    <rect x="120" y="126" width="20" height="4" rx="2" fill="#3B82F6"/>
+    <rect x="142" y="126" width="15" height="4" rx="2" fill="#3B82F6" opacity="0.5"/>
+    
+    <rect x="116" y="145" width="68" height="40" rx="5" fill="#27272A" stroke="#3F3F46" stroke-width="0.5"/>
+    <text x="150" y="162" font-family="JetBrains Mono, monospace" font-size="9" fill="#F97316" text-anchor="middle">BB-101</text>
+    <text x="150" y="175" font-family="Inter, sans-serif" font-size="8" fill="#A1A1AA" text-anchor="middle">Fix UI bug</text>
+    
+    <!-- Review cards -->
+    <rect x="210" y="85" width="68" height="45" rx="5" fill="#27272A" stroke="#F59E0B" stroke-width="1"/>
+    <text x="244" y="102" font-family="JetBrains Mono, monospace" font-size="9" fill="#F59E0B" text-anchor="middle">BB-099</text>
+    <text x="244" y="116" font-family="Inter, sans-serif" font-size="8" fill="#A1A1AA" text-anchor="middle">Dark mode</text>
+    <rect x="214" y="122" width="60" height="4" rx="2" fill="#3ECF8E" opacity="0.4"/>
+    
+    <!-- Done card -->
+    <rect x="210" y="145" width="68" height="35" rx="5" fill="#27272A" stroke="#3ECF8E" stroke-width="1" opacity="0.6"/>
+    <text x="244" y="165" font-family="JetBrains Mono, monospace" font-size="9" fill="#3ECF8E" text-anchor="middle">BB-098 ✓</text>
+  </g>
+  
+  <!-- ARROW 1 -->
+  <g transform="translate(370, 200)">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#F97316" stroke-width="2.5" marker-end="url(#arrow)" stroke-dasharray="8,5"/>
+    <text x="40" y="-12" font-family="JetBrains Mono, monospace" font-size="11" fill="#F97316" text-anchor="middle">dispatch</text>
+  </g>
+  
+  <!-- AI AGENT -->
+  <g transform="translate(470, 90)">
+    <rect x="0" y="0" width="220" height="320" rx="14" fill="#111113" stroke="#3F3F46" stroke-width="1.5"/>
+    <text x="110" y="32" font-family="JetBrains Mono, monospace" font-size="13" fill="#71717A" text-anchor="middle" font-weight="500">AI AGENT</text>
+    
+    <!-- Agent circle -->
+    <circle cx="110" cy="100" r="45" fill="#18181B" stroke="#F97316" stroke-width="2"/>
+    <text x="110" y="115" font-family="sans-serif" font-size="40" text-anchor="middle">🤖</text>
+    
+    <!-- Status -->
+    <rect x="55" y="160" width="110" height="28" rx="14" fill="#3B82F6" opacity="0.15" stroke="#3B82F6" stroke-width="1"/>
+    <circle cx="75" cy="174" r="4" fill="#3B82F6"/>
+    <text x="95" y="178" font-family="JetBrains Mono, monospace" font-size="11" fill="#3B82F6" text-anchor="middle">Running</text>
+    
+    <!-- Agent info -->
+    <text x="110" y="210" font-family="Inter, sans-serif" font-size="14" fill="#FAFAFA" text-anchor="middle" font-weight="500">Agent-Roo</text>
+    <text x="110" y="230" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A" text-anchor="middle">Working on BB-102</text>
+    
+    <!-- Chat bubble -->
+    <rect x="20" y="250" width="180" height="50" rx="8" fill="#27272A" stroke="#3F3F46" stroke-width="0.5"/>
+    <text x="30" y="270" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">💬 "Found 3 legacy refs to</text>
+    <text x="30" y="285" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">JWT library. Updating..."</text>
+  </g>
+  
+  <!-- ARROW 2 -->
+  <g transform="translate(710, 200)">
+    <line x1="0" y1="0" x2="80" y2="0" stroke="#F97316" stroke-width="2.5" marker-end="url(#arrow)" stroke-dasharray="8,5"/>
+    <text x="40" y="-12" font-family="JetBrains Mono, monospace" font-size="11" fill="#F97316" text-anchor="middle">execute</text>
+  </g>
+  
+  <!-- TERMINAL -->
+  <g transform="translate(810, 90)">
+    <rect x="0" y="0" width="340" height="320" rx="14" fill="#111113" stroke="#3F3F46" stroke-width="1.5"/>
+    <text x="170" y="32" font-family="JetBrains Mono, monospace" font-size="13" fill="#71717A" text-anchor="middle" font-weight="500">OPENCODE</text>
+    
+    <!-- Terminal window -->
+    <rect x="15" y="50" width="310" height="210" rx="8" fill="#09090B" stroke="#3F3F46" stroke-width="1"/>
+    
+    <!-- Terminal header -->
+    <rect x="15" y="50" width="310" height="28" rx="8" fill="#18181B"/>
+    <rect x="15" y="68" width="310" height="10" fill="#18181B"/>
+    <circle cx="32" cy="64" r="5" fill="#F06B6B"/>
+    <circle cx="48" cy="64" r="5" fill="#F59E0B"/>
+    <circle cx="64" cy="64" r="5" fill="#3ECF8E"/>
+    <text x="170" y="68" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A" text-anchor="middle">claude-code — BB-102</text>
+    
+    <!-- Terminal content -->
+    <text x="28" y="98" font-family="JetBrains Mono, monospace" font-size="10" fill="#71717A">$ Analyzing repository context...</text>
+    <text x="28" y="115" font-family="JetBrains Mono, monospace" font-size="10" fill="#A1A1AA">  Found 4 references to JWT library</text>
+    <text x="28" y="132" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">  ✓ Updated src/middleware/auth.ts</text>
+    <text x="28" y="149" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">  ✓ Updated types/auth.d.ts</text>
+    <text x="28" y="166" font-family="JetBrains Mono, monospace" font-size="10" fill="#F59E0B">  ⚠ Type mismatch — auto-fixing...</text>
+    <text x="28" y="183" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">  ✓ All tests passed (12/12)</text>
+    <text x="28" y="200" font-family="JetBrains Mono, monospace" font-size="10" fill="#3ECF8E">  ✓ PR #42 created</text>
+    <text x="28" y="220" font-family="JetBrains Mono, monospace" font-size="11" fill="#F97316">❯ _</text>
+    
+    <!-- Evidence badges -->
+    <g transform="translate(15, 275)">
+      <rect x="0" y="0" width="70" height="24" rx="5" fill="#3ECF8E" opacity="0.12" stroke="#3ECF8E" stroke-width="0.5"/>
+      <text x="35" y="16" font-family="JetBrains Mono, monospace" font-size="9" fill="#3ECF8E" text-anchor="middle">✓ Tests</text>
+      
+      <rect x="78" y="0" width="65" height="24" rx="5" fill="#3B82F6" opacity="0.12" stroke="#3B82F6" stroke-width="0.5"/>
+      <text x="110" y="16" font-family="JetBrains Mono, monospace" font-size="9" fill="#3B82F6" text-anchor="middle">PR #42</text>
+      
+      <rect x="151" y="0" width="80" height="24" rx="5" fill="#F97316" opacity="0.12" stroke="#F97316" stroke-width="0.5"/>
+      <text x="191" y="16" font-family="JetBrains Mono, monospace" font-size="9" fill="#F97316" text-anchor="middle">Diff: 3 files</text>
+    </g>
+  </g>
+  
+  <!-- Bottom label -->
+  <text x="600" y="435" font-family="Inter, sans-serif" font-size="13" fill="#52525B" text-anchor="middle">Everything stays in context: tasks, code, conversations, and evidence.</text>
+</svg>

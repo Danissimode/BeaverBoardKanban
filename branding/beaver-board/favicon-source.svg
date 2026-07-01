@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#EA580C"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="100" fill="url(#bg4)"/>
+  
+  <!-- Beaver face -->
+  <g transform="translate(256, 260)">
+    <!-- Head -->
+    <ellipse cx="0" cy="0" rx="120" ry="110" fill="#8B4513"/>
+    <ellipse cx="0" cy="-5" rx="100" ry="90" fill="#A0522D"/>
+    
+    <!-- Ears -->
+    <ellipse cx="-95" cy="-70" rx="30" ry="35" fill="#8B4513"/>
+    <ellipse cx="-95" cy="-70" rx="20" ry="24" fill="#CD853F"/>
+    <ellipse cx="95" cy="-70" rx="30" ry="35" fill="#8B4513"/>
+    <ellipse cx="95" cy="-70" rx="20" ry="24" fill="#CD853F"/>
+    
+    <!-- Eyes -->
+    <ellipse cx="-40" cy="-20" rx="20" ry="22" fill="white"/>
+    <ellipse cx="40" cy="-20" rx="20" ry="22" fill="white"/>
+    <circle cx="-35" cy="-18" r="11" fill="#1a1a1a"/>
+    <circle cx="45" cy="-18" r="11" fill="#1a1a1a"/>
+    <circle cx="-32" cy="-22" r="4" fill="white"/>
+    <circle cx="48" cy="-22" r="4" fill="white"/>
+    
+    <!-- Nose -->
+    <ellipse cx="0" cy="15" rx="18" ry="12" fill="#5D3A1A"/>
+    
+    <!-- Teeth -->
+    <rect x="-14" y="35" width="13" height="22" rx="3" fill="white"/>
+    <rect x="1" y="35" width="13" height="22" rx="3" fill="white"/>
+    
+    <!-- Cheeks -->
+    <ellipse cx="-70" cy="10" rx="20" ry="14" fill="#CD853F" opacity="0.4"/>
+    <ellipse cx="70" cy="10" rx="20" ry="14" fill="#CD853F" opacity="0.4"/>
+  </g>
+  
+  <!-- Hard hat -->
+  <g transform="translate(256, 140)">
+    <ellipse cx="0" cy="35" rx="130" ry="40" fill="#F59E0B"/>
+    <path d="M-120 35 Q-110 -40 0 -55 Q110 -40 120 35" fill="#F59E0B"/>
+    <rect x="-135" y="28" width="270" height="20" rx="10" fill="#EA580C"/>
+    <rect x="-120" y="18" width="240" height="8" rx="4" fill="#FBBF24" opacity="0.5"/>
+  </g>
+</svg>
