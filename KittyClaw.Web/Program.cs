@@ -59,6 +59,10 @@ builder.Services.AddSingleton<TriggerStateStore>();
 builder.Services.AddSingleton<SessionRegistry>();
 builder.Services.AddSingleton(new RunLogStore(dataDir));
 builder.Services.AddSingleton<AgentRunRegistry>(sp => new AgentRunRegistry(sp.GetRequiredService<RunLogStore>()));
+// Roster store for execution slots, presets, and fallback policies
+var rosterStore = new RosterStore(dataDir);
+rosterStore.Load();
+builder.Services.AddSingleton(rosterStore);
 // Cap concurrent claude subprocesses across all projects (chats bypass). Override with the
 // KITTYCLAW_MAX_CONCURRENT_AGENTS env var if 3 is too tight or too loose for the host.
 var maxConcurrent = int.TryParse(Environment.GetEnvironmentVariable("KITTYCLAW_MAX_CONCURRENT_AGENTS"), out var mc) && mc > 0 ? mc : 3;
@@ -324,6 +328,29 @@ app.MapGet("/api/health", (HttpContext ctx) =>
         checks
     });
 }).WithTags("Health").ExcludeFromDescription();
+
+// Alias for launcher compatibility — same checks, shorter URL
+app.MapGet("/health", (HttpContext ctx) =>
+{
+    var checks = new List<object>();
+    bool allOk = true;
+    
+    checks.Add(new { name = "dotnet", status = "ok", detail = ".NET " + Environment.Version });
+    
+    try
+    {
+        var ddOk = Directory.Exists(dataDir) || Directory.CreateDirectory(dataDir) != null;
+        checks.Add(new { name = "dataDir", status = ddOk ? "ok" : "error", detail = new { writable = ddOk } });
+        if (!ddOk) allOk = false;
+    }
+    catch
+    {
+        checks.Add(new { name = "dataDir", status = "error", detail = new { writable = false } });
+        allOk = false;
+    }
+    
+    return Results.Ok(new { status = allOk ? "healthy" : "degraded", timestamp = DateTime.UtcNow, checks });
+}).ExcludeFromDescription();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
