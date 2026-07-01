@@ -78,7 +78,7 @@ public sealed class TicketExecutionPersistenceService : IHostedService, IDisposa
             var metadata = new TicketExecutionMetadata
             {
                 ProjectSlug = run.ProjectSlug,
-                TicketId = run.TicketId.Value,
+                TicketId = run.TicketId ?? 0,
                 RunId = run.RunId,
                 ExecutionMode = em?.Mode ?? "LegacyClaude",
                 RunnerKind = run.RunnerKind,

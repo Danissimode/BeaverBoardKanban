@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 
 namespace KittyClaw.Core.Services;
 
@@ -176,7 +176,7 @@ public sealed class DashboardTileGate : IDisposable
                     result[$"{slug}:{tileSlug}"] = dt;
             }
         }
-        catch { }
+        catch (Exception) { /* best-effort tile run tracking — DB may not exist yet */ }
         return result;
     }
 
@@ -198,7 +198,7 @@ public sealed class DashboardTileGate : IDisposable
             cmd.Parameters.AddWithValue("@ts", DateTime.UtcNow.ToString("O"));
             await cmd.ExecuteNonQueryAsync();
         }
-        catch { }
+        catch (Exception) { /* best-effort tile run tracking — DB may not exist yet */ }
     }
 
     private static void EnsureTable(SqliteConnection conn)

@@ -69,7 +69,7 @@ public class AppSettingsService
             var json = File.ReadAllText(_settingsPath);
             _data = JsonSerializer.Deserialize<AppSettingsData>(json, JsonOpts) ?? new();
         }
-        catch { /* use defaults if settings file is corrupted */ _data = new(); }
+        catch (Exception) { /* use defaults if settings file is corrupted */ _data = new(); }
     }
 
     private void Save()

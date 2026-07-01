@@ -31,7 +31,7 @@ internal sealed class ProcessJobObject : IDisposable
         {
             if (job.Initialize() && job.Assign(proc)) return job;
         }
-        catch { /* fall through to dispose + null */ }
+        catch (Exception) { /* fall through to dispose + null */ }
         job.Dispose();
         return null;
     }

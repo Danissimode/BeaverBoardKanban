@@ -52,11 +52,6 @@ public sealed class FailureLogStore
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public FailureLogEntry Record(FailureLogEntry entry)
-    {
-        return RecordAsync(entry).GetAwaiter().GetResult();
-    }
-
     public async Task<FailureLogEntry> RecordAsync(FailureLogEntry entry, CancellationToken ct = default)
     {
         var dbPath = DbPath(entry.ProjectSlug);
@@ -89,9 +84,6 @@ public sealed class FailureLogStore
         return entry;
     }
 
-    public IReadOnlyList<FailureLogEntry> ForTicket(string projectSlug, int ticketId) =>
-        ForTicketAsync(projectSlug, ticketId).GetAwaiter().GetResult();
-
     public async Task<IReadOnlyList<FailureLogEntry>> ForTicketAsync(string projectSlug, int ticketId, CancellationToken ct = default)
     {
         var dbPath = DbPath(projectSlug);
@@ -111,17 +103,11 @@ public sealed class FailureLogStore
         return results;
     }
 
-    public IReadOnlyList<FailureLogEntry> UnresolvedForTicket(string projectSlug, int ticketId) =>
-        UnresolvedForTicketAsync(projectSlug, ticketId).GetAwaiter().GetResult();
-
     public async Task<IReadOnlyList<FailureLogEntry>> UnresolvedForTicketAsync(string projectSlug, int ticketId, CancellationToken ct = default)
     {
         var all = await ForTicketAsync(projectSlug, ticketId, ct);
         return all.Where(e => !e.Resolved).ToList();
     }
-
-    public IReadOnlyList<FailureLogEntry> UnresolvedForProject(string projectSlug) =>
-        UnresolvedForProjectAsync(projectSlug).GetAwaiter().GetResult();
 
     public async Task<IReadOnlyList<FailureLogEntry>> UnresolvedForProjectAsync(string projectSlug, CancellationToken ct = default)
     {
@@ -141,9 +127,6 @@ public sealed class FailureLogStore
         return results;
     }
 
-    public IReadOnlyList<FailureLogEntry> ForProject(string projectSlug) =>
-        ForProjectAsync(projectSlug).GetAwaiter().GetResult();
-
     public async Task<IReadOnlyList<FailureLogEntry>> ForProjectAsync(string projectSlug, CancellationToken ct = default)
     {
         var dbPath = DbPath(projectSlug);
@@ -162,9 +145,6 @@ public sealed class FailureLogStore
         return results;
     }
 
-    public bool Resolve(string projectSlug, string entryId) =>
-        ResolveAsync(projectSlug, entryId).GetAwaiter().GetResult();
-
     public async Task<bool> ResolveAsync(string projectSlug, string entryId, CancellationToken ct = default)
     {
         var dbPath = DbPath(projectSlug);
@@ -181,9 +161,6 @@ public sealed class FailureLogStore
         return affected > 0;
     }
 
-    public void ClearForTicket(string projectSlug, int ticketId) =>
-        ClearForTicketAsync(projectSlug, ticketId).GetAwaiter().GetResult();
-
     public async Task ClearForTicketAsync(string projectSlug, int ticketId, CancellationToken ct = default)
     {
         var dbPath = DbPath(projectSlug);
@@ -197,9 +174,6 @@ public sealed class FailureLogStore
         cmd.Parameters.AddWithValue("$ticket", ticketId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
-
-    public FailureLogEntry? LatestUnresolved(string projectSlug, int ticketId) =>
-        LatestUnresolvedAsync(projectSlug, ticketId).GetAwaiter().GetResult();
 
     public async Task<FailureLogEntry?> LatestUnresolvedAsync(string projectSlug, int ticketId, CancellationToken ct = default)
     {

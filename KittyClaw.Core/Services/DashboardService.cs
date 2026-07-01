@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
@@ -55,7 +55,7 @@ public class DashboardService
         var result = await cmd.ExecuteScalarAsync();
         if (result is null) return [];
         try { return JsonSerializer.Deserialize<List<DashboardTileLayout>>(result.ToString()!, _json) ?? []; }
-        catch { return []; }
+        catch (Exception) { return []; }
     }
 
     private async Task SaveTilesAsync(string slug, List<DashboardTileLayout> tiles)
@@ -373,7 +373,7 @@ public class DashboardService
             var current = JsonSerializer.Deserialize<List<DashboardTileLayout>>(raw, _json) ?? [];
             if (current.Any(t => !string.IsNullOrWhiteSpace(t.Slug))) return;
         }
-        catch { }
+        catch (Exception) { /* malformed current layout — continue to legacy migration */ }
 
         try
         {
@@ -388,7 +388,7 @@ public class DashboardService
                 .ToList();
             await SaveTilesAsync(projectSlug, migrated);
         }
-        catch { }
+        catch (Exception) { /* malformed legacy layout — skip migration */ }
     }
 
     private record LegacyTileLayout(string FileName = "", int X = 0, int Y = 0, int Width = 300, int Height = 200);

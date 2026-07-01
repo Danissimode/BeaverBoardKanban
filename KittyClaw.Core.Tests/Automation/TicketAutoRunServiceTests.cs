@@ -79,7 +79,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
         var runs = _runRegistry.AllForTicket("test-proj", ticket.Id).ToList();
         Assert.Single(runs);
         Assert.Equal(AgentRunStatus.Completed, runs[0].Status);
-        Assert.Empty(_failures.ForTicket("test-proj", ticket.Id));
+        Assert.Empty(await _failures.ForTicketAsync("test-proj", ticket.Id));
     }
 
     // ── Scenario 2: RequiresPlan=true but not approved → blocked ──
@@ -92,7 +92,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
 
         await _svc.ProcessTransitionAsync("test-proj", ticket.Id, "Todo", "InProgress", CancellationToken.None);
 
-        var failures = _failures.ForTicket("test-proj", ticket.Id);
+        var failures = await _failures.ForTicketAsync("test-proj", ticket.Id);
         Assert.Single(failures);
         Assert.Equal(FailureKinds.PlanNotApproved, failures[0].Kind);
         Assert.False(_runRegistry.ActiveForTicket("test-proj", ticket.Id).Any());
@@ -125,7 +125,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
         Assert.Single(all);
         Assert.Equal("existing", all[0].RunId);
 
-        var failures = _failures.ForTicket("test-proj", ticket.Id);
+        var failures = await _failures.ForTicketAsync("test-proj", ticket.Id);
         Assert.Contains(failures, f => f.Kind == FailureKinds.DuplicateRunBlocked);
     }
 
@@ -139,7 +139,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
 
         await _svc.ProcessTransitionAsync("test-proj", ticket.Id, "Todo", "InProgress", CancellationToken.None);
 
-        var failures = _failures.ForTicket("test-proj", ticket.Id);
+        var failures = await _failures.ForTicketAsync("test-proj", ticket.Id);
         Assert.Single(failures);
         Assert.Equal(FailureKinds.CaoNotImplemented, failures[0].Kind);
 
@@ -157,7 +157,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
 
         await _svc.ProcessTransitionAsync("test-proj", ticket.Id, "Todo", "InProgress", CancellationToken.None);
 
-        Assert.Empty(_failures.ForTicket("test-proj", ticket.Id));
+        Assert.Empty(await _failures.ForTicketAsync("test-proj", ticket.Id));
         Assert.False(_runRegistry.ActiveForTicket("test-proj", ticket.Id).Any());
     }
 
@@ -171,7 +171,7 @@ public sealed class TicketAutoRunServiceTests : IDisposable
 
         await _svc.ProcessTransitionAsync("test-proj", ticket.Id, "Todo", "Review", CancellationToken.None);
 
-        Assert.Empty(_failures.ForTicket("test-proj", ticket.Id));
+        Assert.Empty(await _failures.ForTicketAsync("test-proj", ticket.Id));
         Assert.False(_runRegistry.ActiveForTicket("test-proj", ticket.Id).Any());
     }
 

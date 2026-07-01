@@ -82,7 +82,7 @@ internal static class ClaudeStreamPump
         }
         catch (Exception ex)
         {
-            try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stdout pump failed: {ex.Message}")); } catch { /* subscriber may throw */ }
+            try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stdout pump failed: {ex.Message}")); } catch (Exception) { /* subscriber may throw — best-effort */ }
         }
     }
 
@@ -98,7 +98,7 @@ internal static class ClaudeStreamPump
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex)
                 {
-                    try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stderr read error: {ex.Message}")); } catch { /* subscriber may throw */ }
+                    try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stderr read error: {ex.Message}")); } catch (Exception) { /* subscriber may throw — best-effort */ }
                     break;
                 }
                 if (line is null) break;
@@ -108,7 +108,7 @@ internal static class ClaudeStreamPump
         }
         catch (Exception ex)
         {
-            try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stderr pump failed: {ex.Message}")); } catch { /* subscriber may throw */ }
+            try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stderr pump failed: {ex.Message}")); } catch (Exception) { /* subscriber may throw — best-effort */ }
         }
     }
 
@@ -127,17 +127,17 @@ internal static class ClaudeStreamPump
                     run.Push(new StreamEvent(DateTime.UtcNow, "steer", msg));
                     try
                     {
-                        if (proc.StandardInput.BaseStream.CanWrite)
+                        if (proc.HasExited || !proc.StandardInput.BaseStream.CanWrite)
+                        {
+                            run.AddPendingSteerMessage(msg);
+                        }
+                        else
                         {
                             await proc.StandardInput.WriteLineAsync(msg);
                             await proc.StandardInput.FlushAsync(ct);
                         }
-                        else
-                        {
-                            run.AddPendingSteerMessage(msg);
-                        }
                     }
-                    catch { run.AddPendingSteerMessage(msg); }
+                    catch (Exception) { run.AddPendingSteerMessage(msg); }
                 }
             }
         }

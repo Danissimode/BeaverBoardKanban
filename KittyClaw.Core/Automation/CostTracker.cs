@@ -59,7 +59,7 @@ public sealed class CostTracker
             if (string.IsNullOrWhiteSpace(line)) continue;
             CostLogEntry? e;
             try { e = JsonSerializer.Deserialize<CostLogEntry>(line); }
-            catch { /* skip malformed lines */ continue; }
+            catch (Exception) { /* skip malformed cost-log lines */ continue; }
             if (e is null) continue;
             if (e.At.Date != day) continue;
             sum += e.UsdCost;

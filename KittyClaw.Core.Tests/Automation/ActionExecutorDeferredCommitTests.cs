@@ -47,7 +47,8 @@ public class ActionExecutorDeferredCommitTests
             NullLogger.Instance);
 
         var ticket = await tickets.CreateTicketAsync(project.Slug, "Test ticket", "", "owner");
-        await tickets.MoveTicketAsync(project.Slug, ticket.Id, "Done", "automation");
+        ticket = await tickets.UpdateTicketAsync(project.Slug, ticket!.Id, reviewer: "reviewer-1", riskLevel: "low");
+        await tickets.MoveTicketAsync(project.Slug, ticket!.Id, "Done", "automation");
 
         var rt = new ProjectRuntime(project.Slug);
         rt.Workspace = workspace;

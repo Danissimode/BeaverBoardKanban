@@ -102,7 +102,7 @@ public sealed class MimoCodeRuntime : IAgentRuntime
                             }
                         }
                     }
-                    catch { /* best-effort artifact extraction */ }
+                    catch (Exception) { /* best-effort artifact extraction — malformed JSON */ }
                 }
             }
 

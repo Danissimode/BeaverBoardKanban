@@ -49,7 +49,13 @@ public sealed class AgentRun
     public Channel<string> SteeringQueue { get; } = Channel.CreateUnbounded<string>();
     public CancellationTokenSource Cancellation { get; } = new();
     public bool IsAwaitingUserAnswer { get; set; }
-    public event Action<StreamEvent>? OnEvent;
+
+    private event Action<StreamEvent>? _onEvent;
+    public event Action<StreamEvent>? OnEvent
+    {
+        add { lock (_logLock) _onEvent += value; }
+        remove { lock (_logLock) _onEvent -= value; }
+    }
 
     private readonly List<string> _pendingSteerMessages = new();
     public IReadOnlyList<string> PendingSteerMessages => _pendingSteerMessages;
@@ -76,12 +82,25 @@ public sealed class AgentRun
 
     public void Push(StreamEvent ev)
     {
+        Action<StreamEvent>? handler;
+        lock (_logLock)
+        {
+            _buffer.AddLast(ev);
+            while (_buffer.Count > MaxBuffer) _buffer.RemoveFirst();
+            handler = _onEvent;
+        }
+        handler?.Invoke(ev);
+    }
+
+    /// <summary>Appends an event to the buffer without invoking subscribers. Used during
+    /// deserialization so restored runs don't re-fire events into the live UI.</summary>
+    internal void PushWithoutEvent(StreamEvent ev)
+    {
         lock (_logLock)
         {
             _buffer.AddLast(ev);
             while (_buffer.Count > MaxBuffer) _buffer.RemoveFirst();
         }
-        OnEvent?.Invoke(ev);
     }
 }
 
@@ -179,7 +198,7 @@ public sealed class RunLogStore
                 var json = File.ReadAllText(file);
                 snapshot = JsonSerializer.Deserialize<AgentRunSnapshot>(json, s_json);
             }
-            catch { continue; }
+            catch (Exception) { /* skip corrupted run log */ continue; }
             if (snapshot is null) continue;
 
             var run = new AgentRun
@@ -203,7 +222,7 @@ public sealed class RunLogStore
             run.EndedAt = snapshot.EndedAt;
             run.ExitCode = snapshot.ExitCode;
             foreach (var ev in snapshot.Events)
-                run.Push(ev);
+                run.PushWithoutEvent(ev);
             foreach (var msg in snapshot.PendingSteerMessages)
                 run.AddPendingSteerMessage(msg);
             run.ExecutionMetadata = snapshot.ExecutionMetadata;

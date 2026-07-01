@@ -60,7 +60,7 @@ public sealed class ProcessRunner
             }
             else
             {
-                try { proc.StandardInput.Close(); } catch { /* best-effort */ }
+                try { proc.StandardInput.Close(); } catch (Exception ex) { _logger?.LogDebug(ex, "Failed to close stdin for {FileName}", request.FileName); }
             }
 
             var stdoutTask = proc.StandardOutput.ReadToEndAsync(cts.Token);
@@ -68,7 +68,7 @@ public sealed class ProcessRunner
 
             using var killReg = cts.Token.Register(() =>
             {
-                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { /* cleanup */ }
+                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch (Exception ex) { _logger?.LogDebug(ex, "Kill failed during cancellation cleanup"); }
                 job?.Dispose(); // kill descendants on Windows
             });
 
@@ -84,12 +84,12 @@ public sealed class ProcessRunner
                 if (cancellationToken.IsCancellationRequested)
                 {
                     // Genuine cancellation from the caller
-                    try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { }
+                    try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch (Exception ex) { _logger?.LogDebug(ex, "Kill failed during genuine cancellation"); }
                     job?.Dispose();
                     throw;
                 }
                 // Timeout fired
-                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { }
+                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch (Exception ex) { _logger?.LogDebug(ex, "Kill failed during timeout"); }
                 job?.Dispose();
                 timedOut = true;
                 exitCode = -1;
@@ -106,7 +106,7 @@ public sealed class ProcessRunner
             job?.Dispose();
             if (!proc.HasExited)
             {
-                try { proc.Kill(entireProcessTree: true); } catch { /* best-effort */ }
+                try { proc.Kill(entireProcessTree: true); } catch (Exception ex) { _logger?.LogDebug(ex, "Kill failed in finally"); }
             }
         }
     }

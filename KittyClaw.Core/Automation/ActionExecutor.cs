@@ -507,7 +507,7 @@ internal sealed partial class ActionExecutor
         if (firing.TicketId is not null)
         {
             try { await _tickets.AddActivityAsync(rt.Slug, firing.TicketId.Value, _loc.Get("ActAgentStarted", agentName), "automation"); }
-            catch { /* non-blocking */ }
+            catch (Exception ex) { _logger.LogDebug(ex, "AddActivity failed (non-blocking) for ticket #{Id}", firing.TicketId.Value); }
 
             // Move Ready → InProgress before execution.
             try
@@ -614,7 +614,7 @@ internal sealed partial class ActionExecutor
                 _                        => "ActAgentCompleted",
             };
             try { await _tickets.AddActivityAsync(rt.Slug, firing.TicketId.Value, _loc.Get(statusKey, agentName), "automation"); }
-            catch { /* non-blocking */ }
+            catch (Exception ex) { _logger.LogDebug(ex, "AddActivity failed (non-blocking) for ticket #{Id}", firing.TicketId.Value); }
 
             // Automatic status transitions based on run outcome.
             try
@@ -759,7 +759,7 @@ internal sealed partial class ActionExecutor
                                 _                        => "ActAgentCompleted",
                             };
                             try { await _tickets.AddActivityAsync(rt.Slug, firing.TicketId.Value, _loc.Get(statusKey, agentName), "automation"); }
-                            catch { /* non-blocking */ }
+                            catch (Exception ex) { _logger.LogDebug(ex, "AddActivity failed (non-blocking) for ticket #{Id}", firing.TicketId.Value); }
                         }
 
                         var rest = actions.Skip(i + 1).ToList();
@@ -804,7 +804,7 @@ internal sealed partial class ActionExecutor
             if (s.Remove.Count > 0) parts.Add(_loc.Get("ActLabelsRemoved", string.Join(", ", s.Remove)));
             if (parts.Count > 0)
                 try { await _tickets.AddActivityAsync(rt.Slug, firing.TicketId!.Value, _loc.Get("ActLabelsChanged", string.Join(" / ", parts)), "automation"); }
-                catch { /* non-blocking */ }
+                catch (Exception ex) { _logger.LogDebug(ex, "AddActivity failed (non-blocking) for ticket #{Id}", firing.TicketId!.Value); }
         }
         catch (Exception ex) { _logger.LogWarning(ex, "setLabels failed for ticket #{Id} in project {Project}", firing.TicketId, rt.Slug); }
     }

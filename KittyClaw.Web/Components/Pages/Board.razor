@@ -27,7 +27,6 @@
 @inject KittyClaw.Web.Services.EscapeKeyStack EscapeStack
 @inject HttpClient Http
 @inject TokenBudgetService TokenBudget
-@using KittyClaw.Core.Automation
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -886,8 +885,8 @@ else
                         <div class="plan-status-row">
                             <label class="field-label">Status</label>
                             @{
-                                var planStatus = _selectedTicket.PlanStatus ?? "none";
-                                var planApprovedBy = _selectedTicket.PlanApprovedBy;
+                                var planStatus = _selectedTicket!.PlanStatus ?? "none";
+                                var planApprovedBy = _selectedTicket!.PlanApprovedBy;
                             }
                             <span class="plan-badge plan-@planStatus">@planStatus</span>
                             @if (planApprovedBy is not null)
@@ -945,7 +944,7 @@ else
                     <div class="execution-section">
                         @* Live progress section (shown when there's an active run) *@
                         @{
-                            var execActiveRun = AgentRuns.ActiveForTicket(Slug, _selectedTicket.Id);
+                            var execActiveRun = AgentRuns.ActiveForTicket(Slug, _selectedTicket!.Id);
                         }
                         @if (execActiveRun is not null)
                         {
@@ -1457,7 +1456,7 @@ else
     private List<FailureLogEntry> _failureHistory = [];
     private string _activeDrawerTab = "details"; // details | plan | execution | run
     private bool _isStartingRun = false;
-    private int? _liveProgress; // 0-100, estimated from run duration
+    private int? _liveProgress = null; // 0-100, estimated from run duration
     private string? _opencodeHealth;
     private bool _planEditing = false;
     private string _planDraft = "";

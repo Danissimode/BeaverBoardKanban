@@ -141,7 +141,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
 
             _recentDuplicates[dedupKey] = now;
             _logger?.LogInformation("TicketAutoRunService: ticket #{Id} already has an active run — skipping", ticketId);
-            _failures.Record(new FailureLogEntry
+            await _failures.RecordAsync(new FailureLogEntry
             {
                 ProjectSlug = projectSlug,
                 TicketId = ticketId,
@@ -322,7 +322,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
             await _tickets.AddActivityAsync(projectSlug, ticketId,
                 $"Auto-execution started: {string.Join(", ", details)}", "automation");
         }
-        catch { /* non-blocking */ }
+        catch (Exception ex) { _logger?.LogDebug(ex, "AddActivity failed (non-blocking) for ticket #{Id}", ticketId); }
 
         // 13. Start runner (fire-and-forget, handle completion in continuation)
         _ = StartAndHandleCompletionAsync(request, runner, run, ct);
@@ -434,7 +434,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
         bool moveToBlocked,
         CancellationToken ct)
     {
-        _failures.Record(new FailureLogEntry
+        await _failures.RecordAsync(new FailureLogEntry
         {
             ProjectSlug = projectSlug,
             TicketId = ticketId,
@@ -452,7 +452,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
                     (requiredAction is not null ? $"\n\n→ {requiredAction}" : ""),
                     "automation");
             }
-            catch { /* non-blocking */ }
+            catch (Exception ex) { _logger?.LogDebug(ex, "AddComment failed (non-blocking) for ticket #{Id}", ticketId); }
         }
 
         if (moveToBlocked)
@@ -465,7 +465,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
                     await _tickets.MoveTicketAsync(projectSlug, ticketId, "Blocked", "automation");
                 }
             }
-            catch { /* non-blocking */ }
+            catch (Exception ex) { _logger?.LogDebug(ex, "MoveTicket failed (non-blocking) for ticket #{Id}", ticketId); }
         }
 
         _logger?.LogWarning("TicketAutoRunService: blocked ticket #{Id} [{Kind}] — {Message}",
@@ -480,7 +480,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
         string? runId,
         CancellationToken ct)
     {
-        _failures.Record(new FailureLogEntry
+        await _failures.RecordAsync(new FailureLogEntry
         {
             ProjectSlug = projectSlug,
             TicketId = ticketId,
@@ -494,7 +494,7 @@ public sealed class TicketAutoRunService : IHostedService, IDisposable
             await _tickets.AddCommentAsync(projectSlug, ticketId,
                 $"⚠️ **Auto-run failed** [{failureKind}]\n\n{message}", "automation");
         }
-        catch { /* non-blocking */ }
+        catch (Exception ex) { _logger?.LogDebug(ex, "AddComment failed (non-blocking) for ticket #{Id}", ticketId); }
     }
 
     private static ExecutionMode ParseExecutionMode(string? override_) =>

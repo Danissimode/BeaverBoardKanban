@@ -101,6 +101,6 @@ public sealed class GitCommitTrigger : ITrigger
             p.WaitForExit(5000);
             return p.ExitCode == 0 ? output : null;
         }
-        catch { return null; }
+        catch (Exception) { /* git command failed — not a git repo or no commits */ return null; }
     }
 }

@@ -157,7 +157,7 @@ public static class EndpointsIde
         var created = new List<object>();
         foreach (var task in req.Plan.Tasks)
         {
-            var assignee = req.Options.AssignAgents
+            var assignee = req.Options?.AssignAgents == true
                 ? ResolveAgentMember(task.SuggestedAgent, slug)
                 : null;
 

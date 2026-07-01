@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using KittyClaw.Core.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace KittyClaw.Web.Services;
@@ -94,10 +95,18 @@ public sealed class ApiTokenService
     }
 }
 
-public sealed class ApiTokenResult
+public sealed class ApiTokenResult : IBindableFromHttpContext<ApiTokenResult>
 {
     public required string TokenHash { get; init; }
     public ApiScopes Scopes { get; init; }
+
+    public static ValueTask<ApiTokenResult?> BindAsync(HttpContext context, System.Reflection.ParameterInfo parameter)
+    {
+        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+        var apiTokenService = context.RequestServices.GetRequiredService<ApiTokenService>();
+        var result = apiTokenService.VerifyToken(authHeader);
+        return ValueTask.FromResult(result);
+    }
 }
 
 [Flags]

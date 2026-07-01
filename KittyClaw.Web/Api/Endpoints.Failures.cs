@@ -7,11 +7,11 @@ public static partial class Endpoints
     private static void MapFailureLogbook(RouteGroupBuilder api)
     {
         // Get all failures for a project
-        api.MapGet("/projects/{slug}/failures", (string slug, FailureLogStore store, bool? unresolved) =>
+        api.MapGet("/projects/{slug}/failures", async (string slug, FailureLogStore store, bool? unresolved) =>
         {
             var entries = unresolved == true
-                ? store.UnresolvedForProject(slug)
-                : store.ForProject(slug);
+                ? await store.UnresolvedForProjectAsync(slug)
+                : await store.ForProjectAsync(slug);
             return Results.Ok(entries.Select(e => new
             {
                 e.Id,
@@ -27,9 +27,9 @@ public static partial class Endpoints
         }).WithTags("Failures");
 
         // Get failures for a specific ticket
-        api.MapGet("/projects/{slug}/tickets/{id:int}/failures", (string slug, int id, FailureLogStore store) =>
+        api.MapGet("/projects/{slug}/tickets/{id:int}/failures", async (string slug, int id, FailureLogStore store) =>
         {
-            var entries = store.ForTicket(slug, id);
+            var entries = await store.ForTicketAsync(slug, id);
             return Results.Ok(entries.Select(e => new
             {
                 e.Id,
@@ -44,9 +44,9 @@ public static partial class Endpoints
         }).WithTags("Failures");
 
         // Get latest unresolved failure for a ticket
-        api.MapGet("/projects/{slug}/tickets/{id:int}/failures/latest", (string slug, int id, FailureLogStore store) =>
+        api.MapGet("/projects/{slug}/tickets/{id:int}/failures/latest", async (string slug, int id, FailureLogStore store) =>
         {
-            var entry = store.LatestUnresolved(slug, id);
+            var entry = await store.LatestUnresolvedAsync(slug, id);
             return entry is null ? Results.NotFound() : Results.Ok(new
             {
                 entry.Id,
@@ -59,16 +59,16 @@ public static partial class Endpoints
         }).WithTags("Failures");
 
         // Mark a failure as resolved
-        api.MapPost("/projects/{slug}/failures/{failureId}/resolve", (string slug, string failureId, FailureLogStore store) =>
+        api.MapPost("/projects/{slug}/failures/{failureId}/resolve", async (string slug, string failureId, FailureLogStore store) =>
         {
-            var ok = store.Resolve(slug, failureId);
+            var ok = await store.ResolveAsync(slug, failureId);
             return ok ? Results.Ok(new { resolved = true }) : Results.NotFound();
         }).WithTags("Failures");
 
         // Clear all failures for a ticket
-        api.MapDelete("/projects/{slug}/tickets/{id:int}/failures", (string slug, int id, FailureLogStore store) =>
+        api.MapDelete("/projects/{slug}/tickets/{id:int}/failures", async (string slug, int id, FailureLogStore store) =>
         {
-            store.ClearForTicket(slug, id);
+            await store.ClearForTicketAsync(slug, id);
             return Results.NoContent();
         }).WithTags("Failures");
     }

@@ -11,9 +11,7 @@ public sealed class SettingsService
 
     public SettingsService()
     {
-        _settingsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".kittyclaw");
+        _settingsDir = BeaverBoardPaths.DataDir;
         _settingsPath = Path.Combine(_settingsDir, "settings.json");
         Directory.CreateDirectory(_settingsDir);
     }

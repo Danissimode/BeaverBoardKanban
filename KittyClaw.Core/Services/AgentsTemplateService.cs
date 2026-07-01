@@ -134,7 +134,7 @@ public sealed class AgentsTemplateService
             var (ok, _) = RunProcess("git", "--version", workingDirectory: null);
             return ok;
         }
-        catch { return false; }
+        catch (Exception) { return false; }
     }
 
     public bool IsClaudeAvailable()
@@ -144,7 +144,7 @@ public sealed class AgentsTemplateService
             var (ok, _) = RunProcess("claude", "--version", workingDirectory: null);
             return ok;
         }
-        catch { return false; }
+        catch (Exception) { return false; }
     }
 
     public bool IsOpenCodeAvailable()
@@ -157,7 +157,7 @@ public sealed class AgentsTemplateService
             var (ok2, _) = RunProcess("opencode-cli", "--version", workingDirectory: null);
             return ok2;
         }
-        catch { return false; }
+        catch (Exception) { return false; }
     }
 
     private static (bool Ok, string Output) RunProcess(string file, string args, string? workingDirectory)
@@ -179,7 +179,7 @@ public sealed class AgentsTemplateService
             p.WaitForExit(10_000);
             return (p.ExitCode == 0, stdout + stderr);
         }
-        catch { return (false, ""); }
+        catch (Exception) { return (false, ""); }
     }
 
     public enum GitInitResult { NotAttempted, AlreadyExists, Created, GitMissing, Failed }

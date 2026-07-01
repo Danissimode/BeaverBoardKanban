@@ -26,24 +26,16 @@ var builder = WebApplication.CreateBuilder(args);
 // port Kestrel is actually binding.
 if (string.IsNullOrEmpty(builder.Configuration["urls"]))
 {
-    const string fallbackUrl = "http://localhost:5230";
+    const string fallbackUrl = "http://127.0.0.1:5230";
     builder.WebHost.UseUrls(fallbackUrl);
     Environment.SetEnvironmentVariable("ASPNETCORE_URLS", fallbackUrl);
 }
 
-// BEAVERBOARD_DATA_DIR: primary data directory override.
-// Falls back to KITTYCLAW_DATA_DIR (backward compat with existing setups).
-// Defaults to %APPDATA%/BeaverBoard/ — not KittyClaw, for clean rebrand.
-// Legacy TodoApp path is migrated to the active data dir on first run.
-var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-var dataDir = Environment.GetEnvironmentVariable("BEAVERBOARD_DATA_DIR")
-    ?? Environment.GetEnvironmentVariable("KITTYCLAW_DATA_DIR")
-    ?? Path.Combine(appData, "BeaverBoard");
-var legacyTodoAppDir = Path.Combine(appData, "TodoApp");
-if (!Directory.Exists(dataDir) && Directory.Exists(legacyTodoAppDir))
-{
-    Directory.Move(legacyTodoAppDir, dataDir);
-}
+// Use BeaverBoardPaths for platform-aware storage directories.
+// This handles macOS ~/Library/Application Support, Linux XDG, and Windows APPDATA.
+BeaverBoardPaths.EnsureDirectories();
+BeaverBoardPaths.MigrateFromLegacy();
+var dataDir = BeaverBoardPaths.DataDir;
 var appSettings = new KittyClaw.Core.Services.AppSettingsService(dataDir);
 builder.Services.AddSingleton(appSettings);
 builder.Services.AddSingleton(new KittyClaw.Core.Services.LocalizationService(appSettings));
@@ -93,7 +85,9 @@ builder.Services.AddSingleton<IAgentRuntime, OpenCodeRuntime>();
 // builder.Services.AddSingleton<IAgentRuntime, VibeRuntime>();
 // builder.Services.AddSingleton<IAgentRuntime, KimiCodeRuntime>();
 
-builder.Services.AddSingleton<AgentRuntimeRouter>();
+// AgentRuntimeRouter is currently unused and requires per-project config that
+// can't be resolved as a singleton. Re-register with proper factory when needed.
+// builder.Services.AddSingleton<AgentRuntimeRouter>();
 builder.Services.AddSingleton<IAgentPromptBuilder, PromptBuilder>();
 
 // Keep ClaudeRunner for backward compat (used by ClaudeCodeRuntime)
@@ -159,7 +153,7 @@ builder.Services.AddSingleton<RunnerRegistry>(sp =>
     string? preferred = null;
     try
     {
-        var data = settings?.LoadAsync().GetAwaiter().GetResult();
+        var data = settings?.LoadSync();
         preferred = data?.PreferredRunner;
     }
     catch { /* ignore settings read errors during startup */ }
@@ -318,7 +312,7 @@ app.MapGet("/api/health", (HttpContext ctx) =>
     }
     
     // CORS mode (informational)
-    checks.Add(new { name = "cors", status = "info", detail = "LocalOnly (localhost + 127.0.0.1 only)" });
+    checks.Add(new { name = "cors", status = "info", detail = "LocalOnly (127.0.0.1 only)" });
     
     // Port
     checks.Add(new { name = "port", status = "info", detail = ctx.Request.Host.Port?.ToString() ?? "unknown" });
@@ -334,5 +328,20 @@ app.MapGet("/api/health", (HttpContext ctx) =>
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Write runtime port descriptor so the launcher (or a second .app instance)
+// can discover and reuse the existing backend instead of spawning duplicates.
+// The lock file also prevents concurrent backend startups from racing.
+var currentPid = Environment.ProcessId;
+File.WriteAllText(BeaverBoardPaths.PidFile, currentPid.ToString());
+
+var portDescriptor = new PortDescriptor
+{
+    Host = "127.0.0.1",
+    Port = 5230,
+    Pid = currentPid,
+    StartedAt = DateTime.UtcNow,
+};
+portDescriptor.Write(BeaverBoardPaths.PortFile);
 
 app.Run();

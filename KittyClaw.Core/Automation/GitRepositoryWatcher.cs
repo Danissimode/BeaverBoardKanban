@@ -77,7 +77,7 @@ public sealed class GitRepositoryWatcher : BackgroundService
                 var (_, ws, _) = await _store.LoadAsync(project.Slug);
                 workspace = ws;
             }
-            catch { continue; }
+            catch (Exception) { /* skip projects with missing workspace config */ continue; }
 
             var gitDir = Path.Combine(workspace, ".git");
             if (!Directory.Exists(gitDir)) continue;

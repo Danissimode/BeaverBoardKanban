@@ -237,7 +237,9 @@ public sealed class ClaudeRunner
 
             // Auto-replay steer messages that arrived while stdin was closed (--print mode).
             // Loop so that steers injected during the replay itself are also picked up.
-            while (ctx.SessionScope == "chat" && attempt.Exit == 0 && run.PendingSteerMessages.Count > 0)
+            const int MaxAutoReplays = 10;
+            int replayCount = 0;
+            while (ctx.SessionScope == "chat" && attempt.Exit == 0 && run.PendingSteerMessages.Count > 0 && ++replayCount <= MaxAutoReplays)
             {
                 var steers = run.DrainPendingSteerMessages();
                 var steerText = string.Join("\n", steers.Select(s => $"[Steering message from previous turn]: {s}"));
@@ -246,6 +248,11 @@ public sealed class ClaudeRunner
                 var replayCtx = ctx.WithChatReplay(steerText);
                 attempt = await SpawnAndWaitAsync(replayCtx, run, skillContent, sessionId, isResume: true, modelOverride: null, ct);
                 if (attempt.Cancelled) return run;
+            }
+            if (replayCount > MaxAutoReplays)
+            {
+                _logger?.LogWarning("Max auto-replay limit ({Max}) reached for {Agent} run={RunId}; {Pending} steer messages remain undelivered",
+                    MaxAutoReplays, ctx.AgentName, run.RunId, run.PendingSteerMessages.Count);
             }
 
             _runs.Complete(run.RunId, attempt.Exit == 0 ? AgentRunStatus.Completed : AgentRunStatus.Failed, attempt.Exit);
@@ -294,7 +301,7 @@ public sealed class ClaudeRunner
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception in ClaudeRunner for {Agent} run={RunId}", ctx.AgentName, run.RunId);
-            try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"Internal runner error: {ex.Message}")); } catch { /* subscriber may throw */ }
+            try { run.Push(new StreamEvent(DateTime.UtcNow, "error", $"Internal runner error: {ex.Message}")); } catch (Exception pushEx) { _logger?.LogDebug(pushEx, "OnEvent subscriber threw while reporting error"); }
             _runs.Complete(run.RunId, AgentRunStatus.Failed, -1);
             return run;
         }
@@ -358,7 +365,7 @@ public sealed class ClaudeRunner
                 && info.TryGetProperty("status", out var status)
                 && string.Equals(status.GetString(), "rejected", StringComparison.OrdinalIgnoreCase);
         }
-        catch { return false; }
+        catch (Exception) { /* failed to parse rate_limit_event JSON — ignore malformed payload */ return false; }
     }
 
     private async Task<SpawnResult> SpawnAndWaitAsync(
@@ -457,7 +464,7 @@ public sealed class ClaudeRunner
 
             using var killReg = linked.Token.Register(() =>
             {
-                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { /* cleanup, process may already be exiting */ }
+                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch (Exception killEx) { _logger?.LogDebug(killEx, "Kill failed during cancellation cleanup"); }
             });
 
             // Terminal-result watchdog. claude emits a `result` (or `max_turns`) event when its
@@ -492,7 +499,7 @@ public sealed class ClaudeRunner
             try
             {
                 await proc.WaitForExitAsync(waitCts.Token);
-                try { proc.StandardInput.Close(); } catch { /* stdin may already be closed */ }
+                try { proc.StandardInput.Close(); } catch (Exception closeEx) { _logger?.LogDebug(closeEx, "stdin close failed after WaitForExitAsync"); }
                 exit = proc.ExitCode;
             }
             catch (OperationCanceledException)
@@ -505,7 +512,7 @@ public sealed class ClaudeRunner
                 else if (linked.IsCancellationRequested)
                 {
                     // Genuine stop / external cancellation.
-                    try { proc.Kill(entireProcessTree: true); } catch { /* cleanup on cancellation */ }
+                    try { proc.Kill(entireProcessTree: true); } catch (Exception killEx) { _logger?.LogDebug(killEx, "Kill failed during stop cancellation"); }
                     job?.Dispose(); // also terminate any descendant the agent backgrounded
                     _runs.Complete(run.RunId, AgentRunStatus.Stopped, null);
                     AppendDebugLog(ctx, $"STOPPED {ctx.AgentName} run={run.RunId}");
@@ -521,7 +528,7 @@ public sealed class ClaudeRunner
                     _logger.LogWarning(
                         "{Agent} run={RunId} emitted its result but did not exit within {Grace}s; killing the process tree (a backgrounded child likely kept it alive)",
                         ctx.AgentName, run.RunId, ResultExitGrace.TotalSeconds);
-                    try { proc.Kill(entireProcessTree: true); } catch { /* best-effort */ }
+                    try { proc.Kill(entireProcessTree: true); } catch (Exception killEx) { _logger?.LogDebug(killEx, "Kill failed during result-grace watchdog"); }
                     exit = resultOutcome == 1 ? 0 : 1;
                 }
             }
@@ -536,17 +543,17 @@ public sealed class ClaudeRunner
             var drain = Task.WhenAll(stdoutTask, stderrTask);
             if (await Task.WhenAny(drain, Task.Delay(PumpDrainGrace, CancellationToken.None)) != drain)
             {
-                _logger.LogWarning(
+                _logger?.LogWarning(
                     "stdout/stderr did not reach EOF {Grace}s after {Agent} run={RunId} exited (a backgrounded child likely holds the pipe) — abandoning drain",
                     PumpDrainGrace.TotalSeconds, ctx.AgentName, run.RunId);
                 linked.Cancel(); // unblocks ReadLineAsync(ct); killReg is a no-op since proc already exited
-                try { await drain; } catch { /* pumps observe cancellation */ }
+                try { await drain; } catch (Exception drainEx) { _logger?.LogDebug(drainEx, "Pump drain observed cancellation"); }
             }
             // Cancel linked so PumpSteeringAsync stops: without this it competes with
             // RunAsync's IsAwaitingUserAnswer wait for messages on the same SteeringQueue,
             // consuming the user's answer and preventing the run from resuming promptly.
             if (!linked.IsCancellationRequested) linked.Cancel();
-            try { await steerTask; } catch { }
+            try { await steerTask; } catch (Exception steerEx) { _logger?.LogDebug(steerEx, "Steer task observed cancellation"); }
             // Drain any messages that arrived after process exit into PendingSteerMessages,
             // unless IsAwaitingUserAnswer is set — RunAsync will read the answer itself.
             if (!run.IsAwaitingUserAnswer)
@@ -627,7 +634,7 @@ public sealed class ClaudeRunner
         if (ctx.ImagePaths is null || ctx.ImagePaths.Count == 0) return;
         foreach (var p in ctx.ImagePaths)
         {
-            try { File.Delete(p); } catch { /* best-effort cleanup */ }
+            try { File.Delete(p); } catch (Exception) { /* best-effort image cleanup */ }
         }
     }
 
@@ -756,6 +763,6 @@ public sealed class ClaudeRunner
             File.AppendAllText(Path.Combine(dir, "debug.log"),
                 $"[{DateTime.UtcNow:o}] {line}\n");
         }
-        catch { /* best-effort debug log — disk errors must not crash the run */ }
+        catch (Exception) { /* best-effort debug log — disk errors must not crash the run */ }
     }
 }

@@ -30,7 +30,7 @@ public class AgentRuntimeConfigLoader
                     });
                     if (config is not null) return config;
                 }
-                catch { /* best-effort fallback */ }
+                catch (Exception) { /* best-effort fallback — corrupted or missing runtime config */ }
             }
         }
 
@@ -60,7 +60,7 @@ public class AgentRuntimeConfigLoader
                     });
                     if (config is not null) return config;
                 }
-                catch { /* best-effort fallback */ }
+                catch (Exception) { /* best-effort fallback — corrupted or missing runtime config */ }
             }
         }
 

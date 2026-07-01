@@ -130,6 +130,50 @@ public sealed class EndpointsRefactorTests : IClassFixture<EndpointsRefactorTest
         "GET /api/projects/{slug}/tickets/{id}/failures/latest",
         "POST /api/projects/{slug}/failures/{failureId}/resolve",
         "DELETE /api/projects/{slug}/tickets/{id}/failures",
+        // Chat / runners / runs (global)
+        "GET /api/chat/runners",
+        "POST /api/projects/{slug}/chat/start-v2",
+        // Agent chat profiles
+        "GET /api/projects/{slug}/agent-chat/profiles",
+        "GET /api/projects/{slug}/agent-chat/profiles/{agentId}",
+        "PUT /api/projects/{slug}/agent-chat/profiles/{agentId}",
+        "POST /api/projects/{slug}/agent-chat/init-defaults",
+        // Agent chat role policies
+        "GET /api/projects/{slug}/agent-chat/role-policies",
+        "GET /api/projects/{slug}/agent-chat/role-policies/{roleId}",
+        "PUT /api/projects/{slug}/agent-chat/role-policies/{roleId}",
+        // Team chat
+        "GET /api/projects/{slug}/team-chat/agent/{agentId}",
+        "GET /api/projects/{slug}/team-chat/inbox",
+        "GET /api/projects/{slug}/team-chat/messages",
+        "POST /api/projects/{slug}/team-chat/messages",
+        "POST /api/projects/{slug}/team-chat/messages/{id}/resolve",
+        "GET /api/projects/{slug}/team-chat/tickets/{ticketId}",
+        "POST /api/projects/{slug}/team-chat/tickets/{ticketId}",
+        "GET /api/projects/{slug}/team-chat/unread",
+        // Runners (global)
+        "GET /api/runners",
+        "GET /api/runners/{kind}",
+        "GET /api/runners/default",
+        "POST /api/runners/default",
+        "GET /api/runners/health",
+        "GET /api/runners/recommended",
+        // Runs (global)
+        "GET /api/runs",
+        "GET /api/runs/{runId}",
+        "GET /api/runs/{runId}/stream",
+        "POST /api/runs/{runId}/steer",
+        "POST /api/runs/{runId}/stop",
+        // IDE / API v1
+        "GET /api/v1/ide/projects",
+        "GET /api/v1/ide/projects/{slug}/board",
+        "GET /api/v1/ide/projects/{slug}/cards/{id}/execution/status",
+        "POST /api/v1/ide/projects/{slug}/api-token/generate",
+        "POST /api/v1/ide/projects/{slug}/cards/{id}/comments",
+        "POST /api/v1/ide/projects/{slug}/cards/{id}/evidence",
+        "POST /api/v1/ide/projects/{slug}/cards/{id}/execution/start",
+        "POST /api/v1/ide/projects/{slug}/chat/messages",
+        "POST /api/v1/ide/projects/{slug}/plans/import",
     };
 
     [Fact]
@@ -230,6 +274,50 @@ public sealed class EndpointsRefactorTests : IClassFixture<EndpointsRefactorTest
         ["GET /api/projects/{slug}/tickets/{id}/failures/latest"] = "Failures",
         ["POST /api/projects/{slug}/failures/{failureId}/resolve"] = "Failures",
         ["DELETE /api/projects/{slug}/tickets/{id}/failures"] = "Failures",
+        // Chat / runners / runs (global)
+        ["GET /api/chat/runners"] = "Chat",
+        ["POST /api/projects/{slug}/chat/start-v2"] = "Chat",
+        // Agent chat profiles
+        ["GET /api/projects/{slug}/agent-chat/profiles"] = "AgentChat",
+        ["GET /api/projects/{slug}/agent-chat/profiles/{agentId}"] = "AgentChat",
+        ["PUT /api/projects/{slug}/agent-chat/profiles/{agentId}"] = "AgentChat",
+        ["POST /api/projects/{slug}/agent-chat/init-defaults"] = "AgentChat",
+        // Agent chat role policies
+        ["GET /api/projects/{slug}/agent-chat/role-policies"] = "AgentChat",
+        ["GET /api/projects/{slug}/agent-chat/role-policies/{roleId}"] = "AgentChat",
+        ["PUT /api/projects/{slug}/agent-chat/role-policies/{roleId}"] = "AgentChat",
+        // Team chat
+        ["GET /api/projects/{slug}/team-chat/agent/{agentId}"] = "TeamChat",
+        ["GET /api/projects/{slug}/team-chat/inbox"] = "TeamChat",
+        ["GET /api/projects/{slug}/team-chat/messages"] = "TeamChat",
+        ["POST /api/projects/{slug}/team-chat/messages"] = "TeamChat",
+        ["POST /api/projects/{slug}/team-chat/messages/{id}/resolve"] = "TeamChat",
+        ["GET /api/projects/{slug}/team-chat/tickets/{ticketId}"] = "TeamChat",
+        ["POST /api/projects/{slug}/team-chat/tickets/{ticketId}"] = "TeamChat",
+        ["GET /api/projects/{slug}/team-chat/unread"] = "TeamChat",
+        // Runners (global)
+        ["GET /api/runners"] = "Runners",
+        ["GET /api/runners/{kind}"] = "Runners",
+        ["GET /api/runners/default"] = "Runners",
+        ["POST /api/runners/default"] = "Runners",
+        ["GET /api/runners/health"] = "Runners",
+        ["GET /api/runners/recommended"] = "Runners",
+        // Runs (global)
+        ["GET /api/runs"] = "GlobalRuns",
+        ["GET /api/runs/{runId}"] = "GlobalRuns",
+        ["GET /api/runs/{runId}/stream"] = "GlobalRuns",
+        ["POST /api/runs/{runId}/steer"] = "GlobalRuns",
+        ["POST /api/runs/{runId}/stop"] = "GlobalRuns",
+        // IDE / API v1
+        ["GET /api/v1/ide/projects"] = "IDE / API v1",
+        ["GET /api/v1/ide/projects/{slug}/board"] = "IDE / API v1",
+        ["GET /api/v1/ide/projects/{slug}/cards/{id}/execution/status"] = "IDE / API v1",
+        ["POST /api/v1/ide/projects/{slug}/api-token/generate"] = "IDE / API v1",
+        ["POST /api/v1/ide/projects/{slug}/cards/{id}/comments"] = "IDE / API v1",
+        ["POST /api/v1/ide/projects/{slug}/cards/{id}/evidence"] = "IDE / API v1",
+        ["POST /api/v1/ide/projects/{slug}/cards/{id}/execution/start"] = "IDE / API v1",
+        ["POST /api/v1/ide/projects/{slug}/chat/messages"] = "IDE / API v1",
+        ["POST /api/v1/ide/projects/{slug}/plans/import"] = "IDE / API v1",
     };
 
     [Fact]

@@ -77,8 +77,9 @@ public sealed class TestInstance : IAsyncDisposable
         // Drain output so the pipe doesn't fill up. We don't surface it unless startup fails.
         var stdoutBuf = new System.Text.StringBuilder();
         var stderrBuf = new System.Text.StringBuilder();
-        _ = Task.Run(async () => { try { while (await proc.StandardOutput.ReadLineAsync() is { } l) lock (stdoutBuf) stdoutBuf.AppendLine(l); } catch { } });
-        _ = Task.Run(async () => { try { while (await proc.StandardError.ReadLineAsync() is { } l) lock (stderrBuf) stderrBuf.AppendLine(l); } catch { } });
+        var outputLock = new object();
+        _ = Task.Run(async () => { try { while (await proc.StandardOutput.ReadLineAsync() is { } l) lock (outputLock) stdoutBuf.AppendLine(l); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] stdout drain error: {ex.Message}"); } });
+        _ = Task.Run(async () => { try { while (await proc.StandardError.ReadLineAsync() is { } l) lock (outputLock) stderrBuf.AppendLine(l); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] stderr drain error: {ex.Message}"); } });
 
         try
         {
@@ -86,10 +87,10 @@ public sealed class TestInstance : IAsyncDisposable
         }
         catch
         {
-            try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { }
+            try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] kill failed: {ex.Message}"); }
             string snippet;
-            lock (stdoutBuf) lock (stderrBuf) snippet = $"--- stdout ---\n{stdoutBuf}\n--- stderr ---\n{stderrBuf}";
-            try { Directory.Delete(dataDir, recursive: true); } catch { }
+            lock (outputLock) snippet = $"--- stdout ---\n{stdoutBuf}\n--- stderr ---\n{stderrBuf}";
+            try { Directory.Delete(dataDir, recursive: true); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] cleanup failed: {ex.Message}"); }
             throw new InvalidOperationException($"KittyClaw.Web on port {port} did not become ready.\n{snippet}");
         }
 
@@ -166,12 +167,12 @@ public sealed class TestInstance : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        try { if (!_proc.HasExited) _proc.Kill(entireProcessTree: true); } catch { /* best-effort */ }
-        try { await _proc.WaitForExitAsync(); } catch { }
+        try { if (!_proc.HasExited) _proc.Kill(entireProcessTree: true); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] dispose kill failed: {ex.Message}"); }
+        try { await _proc.WaitForExitAsync(); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] dispose wait failed: {ex.Message}"); }
         _proc.Dispose();
         if (_ownsDataDir)
         {
-            try { Directory.Delete(DataDir, recursive: true); } catch { /* keep going */ }
+            try { Directory.Delete(DataDir, recursive: true); } catch (Exception ex) { Console.Error.WriteLine($"[qa-runner] dispose cleanup failed: {ex.Message}"); }
         }
     }
 }

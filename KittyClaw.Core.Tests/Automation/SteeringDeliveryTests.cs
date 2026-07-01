@@ -51,6 +51,8 @@ public class SteeringDeliveryTests
             new SessionRegistry(), runs, new RunConcurrencyGate(1),
             NullLogger<ClaudeRunner>.Instance);
 
+        // Use SessionScope = null (automation) so the auto-replay loop does NOT run;
+        // this lets us inspect PendingSteerMessages directly without the loop draining them.
         var ctx = new ClaudeRunContext
         {
             ProjectSlug = project.Slug,
@@ -60,8 +62,7 @@ public class SteeringDeliveryTests
             InlineSkillContent = "# steer-agent\n\n<!--scenario:default-->",
             ExtraContext = "hello",
             MaxTurns = 1,
-            SessionScope = "chat",
-            ConcurrencyGroup = $"chat:{project.Slug}:steer-agent",
+            SessionScope = null, // automation — no replay loop
             OnEventHook = ev =>
             {
                 // "launch" fires after stdin has been closed; queue a steer message
@@ -175,13 +176,11 @@ public class SteeringDeliveryTests
     }
 
     // ── Test 3 ───────────────────────────────────────────────────────────────
-    // End-to-end: steer messages that arrive on turn N are included in turn N+1.
-    // Verifies the full pipeline: PendingSteerMessages collected → passed via
-    // ClaudeRunContext → prepended by BuildPromptAsync.
-    //
-    // Currently FAILS (compilation): depends on both PendingSteerMessages APIs.
+    // End-to-end: steer messages that arrive during a chat run are auto-replayed
+    // within the same run by the auto-replay loop. They are drained from
+    // PendingSteerMessages and emitted as "steer" events.
     [Fact]
-    public async Task SteeringMessages_CollectedInRun_ArePassedToNextResumeTurn()
+    public async Task SteeringMessages_CollectedInRun_AreAutoReplayedInSameRun()
     {
         using var tmp = new TempDir();
         var projects = new ProjectService(tmp.Path);
@@ -198,6 +197,7 @@ public class SteeringDeliveryTests
         AgentRun? activeRun = null;
         runs.OnRunStarted += r => activeRun = r;
 
+        bool launched = false;
         var ctx1 = new ClaudeRunContext
         {
             ProjectSlug = project.Slug,
@@ -211,8 +211,9 @@ public class SteeringDeliveryTests
             ConcurrencyGroup = $"chat:{project.Slug}:steer-agent",
             OnEventHook = ev =>
             {
-                if (ev.Kind == "launch" && activeRun is not null)
+                if (ev.Kind == "launch" && activeRun is not null && !launched)
                 {
+                    launched = true;
                     activeRun.SteeringQueue.Writer.TryWrite("steer-for-next-turn-A");
                     activeRun.SteeringQueue.Writer.TryWrite("steer-for-next-turn-B");
                 }
@@ -221,38 +222,22 @@ public class SteeringDeliveryTests
 
         var run1 = await runner.RunAsync(ctx1, CancellationToken.None);
 
-        // After turn 1 ends, any undelivered steer messages must be present.
-        // Currently FAILS (compilation): PendingSteerMessages doesn't exist.
-        Assert.Equal(2, run1.PendingSteerMessages.Count);
-        Assert.Equal("steer-for-next-turn-A", run1.PendingSteerMessages[0]);
-        Assert.Equal("steer-for-next-turn-B", run1.PendingSteerMessages[1]);
+        // Auto-replay loop drains pending steer messages within the same run.
+        Assert.Empty(run1.PendingSteerMessages);
 
-        // Caller passes them to the next turn context.
-        var ctx2 = new ClaudeRunContext
-        {
-            ProjectSlug = project.Slug,
-            WorkspacePath = workspace,
-            AgentName = "steer-agent",
-            SkillFile = "(inline)",
-            InlineSkillContent = "# steer-agent\n\n<!--scenario:default-->",
-            ExtraContext = "turn two",
-            PendingSteerMessages = run1.PendingSteerMessages,
-            MaxTurns = 1,
-            SessionScope = "chat",
-            ConcurrencyGroup = $"chat:{project.Slug}:steer-agent",
-            RetryOnResumeFailure = true,
-        };
-
-        var run2 = await runner.RunAsync(ctx2, CancellationToken.None);
-        Assert.Equal(AgentRunStatus.Completed, run2.Status);
-
-        // Both steered messages must appear as "steer" events on run2.
-        var steerTexts = run2.SnapshotBuffer()
+        // The steer messages were emitted as "steer" events by PumpSteeringAsync.
+        var steerEvents = run1.SnapshotBuffer()
             .Where(e => e.Kind == "steer")
             .Select(e => e.Text)
             .ToList();
 
-        Assert.Contains("steer-for-next-turn-A", steerTexts);
-        Assert.Contains("steer-for-next-turn-B", steerTexts);
+        Assert.Contains("steer-for-next-turn-A", steerEvents);
+        Assert.Contains("steer-for-next-turn-B", steerEvents);
+
+        // A "steer_replay" event confirms the auto-replay loop fired.
+        var replayEvents = run1.SnapshotBuffer()
+            .Where(e => e.Kind == "steer_replay")
+            .ToList();
+        Assert.Single(replayEvents);
     }
 }
