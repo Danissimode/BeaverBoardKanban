@@ -45,7 +45,8 @@ public class ExecutionResolver
     {
         var result = new ResolvedExecution
         {
-            HandoffFromRunId = handoffFromRunId
+            HandoffFromRunId = handoffFromRunId,
+            RosterPresetId = _activePresetId
         };
 
         // 1. Check ticket override (lockExecutor takes precedence)
@@ -58,6 +59,12 @@ public class ExecutionResolver
         if (string.IsNullOrEmpty(assignedSlotId) || !_slots.TryGetValue(assignedSlotId, out var slot))
         {
             // No slot assigned — use first available programmer slot or default
+            if (_slots.Count == 0)
+            {
+                result.Reason = "no-slots-configured";
+                return result;
+            }
+            
             slot = _slots.Values.FirstOrDefault(s => s.Role == "programmer" && s.Status == "available")
                 ?? _slots.Values.FirstOrDefault(s => s.Status == "available")
                 ?? _slots.Values.First();
@@ -82,29 +89,37 @@ public class ExecutionResolver
             return result;
         }
 
-        // 4. Look up slot's active model profile
+        // 4. Apply roster preset override if slot config exists
+        // Preset is the source of truth for slot → model mapping
+        if (_presets.TryGetValue(_activePresetId, out var preset) &&
+            preset.Slots.TryGetValue(slot.Id, out var slotConfig) &&
+            !string.IsNullOrEmpty(slotConfig.ModelProfileId) &&
+            _profiles.ContainsKey(slotConfig.ModelProfileId))
+        {
+            result.ModelProfileId = slotConfig.ModelProfileId;
+            result.ResolvedModel = ResolveModelFromProfile(slotConfig.ModelProfileId);
+            return result;
+        }
+
+        // 5. Fall back to slot's active model profile
         var profileId = slot.ActiveModelProfileId;
         if (string.IsNullOrEmpty(profileId) || !_profiles.ContainsKey(profileId))
         {
             // Fall back to first available profile
-            profileId = _profiles.Keys.First();
-            result.Reason = "profile-fallback";
+            if (_profiles.Count > 0)
+            {
+                profileId = _profiles.Keys.First();
+                result.Reason = "profile-fallback";
+            }
+            else
+            {
+                result.Reason = "no-profiles-configured";
+                return result;
+            }
         }
 
         result.ModelProfileId = profileId;
         result.ResolvedModel = ResolveModelFromProfile(profileId);
-
-        // 5. Apply roster preset override if slot config exists
-        if (_presets.TryGetValue(_activePresetId, out var preset) &&
-            preset.Slots.TryGetValue(slot.Id, out var slotConfig))
-        {
-            if (!string.IsNullOrEmpty(slotConfig.ModelProfileId) &&
-                _profiles.ContainsKey(slotConfig.ModelProfileId))
-            {
-                result.ModelProfileId = slotConfig.ModelProfileId;
-                result.ResolvedModel = ResolveModelFromProfile(slotConfig.ModelProfileId);
-            }
-        }
 
         return result;
     }
@@ -179,7 +194,8 @@ public class ExecutionResolver
     {
         if (_profiles.TryGetValue(profileId, out var profile))
         {
-            return profile.Model;
+            // Use OpencodeModel (provider/model-id format) if available, fall back to Model
+            return profile.OpencodeModel ?? profile.Model;
         }
         return "";
     }

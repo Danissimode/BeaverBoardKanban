@@ -66,7 +66,16 @@ internal sealed partial class ActionExecutor
         
         // Load profiles from config
         var profiles = new Dictionary<string, Runtimes.ModelProfileConfig>();
-        // TODO: Load from AgentRuntimeProjectConfig
+        
+        // Try to load from AgentRuntimeConfigLoader if available
+        // For now, profiles must be loaded from roster store or default config
+        // TODO: Load from AgentRuntimeProjectConfig when integrated
+        
+        if (_rosterStore.Slots.Count == 0 && _rosterStore.Presets.Count == 0)
+        {
+            // No roster configured - skip resolution
+            return null;
+        }
         
         var resolver = new ExecutionResolver(
             _rosterStore.Slots.ToDictionary(s => s.Key),
@@ -80,26 +89,6 @@ internal sealed partial class ActionExecutor
             assignedSlotId,
             overrideModelProfileId,
             lockExecutor);
-    }
-    
-    /// <summary>
-    /// Apply resolved execution plan to runner request.
-    /// Sets model, agent, and other fields from the roster resolution.
-    /// </summary>
-    private RunnerRequest ApplyRosterResolution(RunnerRequest request, ResolvedExecution resolved)
-    {
-        // Only apply if roster resolved a model/agent
-        if (string.IsNullOrEmpty(resolved.ResolvedModel) && string.IsNullOrEmpty(resolved.ResolvedAgent))
-        {
-            return request;
-        }
-        
-        return request with
-        {
-            Model = resolved.ResolvedModel ?? request.Model,
-            // Provider is extracted from model string (e.g., "kimi/kimi-2.7-code" -> provider is implicit)
-            // The runner will handle provider resolution from the model string
-        };
     }
     
     /// <summary>
