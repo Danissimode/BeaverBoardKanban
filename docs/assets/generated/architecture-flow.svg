@@ -83,12 +83,19 @@
     
     <!-- Agent circle -->
     <circle cx="110" cy="100" r="45" fill="#18181B" stroke="#F97316" stroke-width="2"/>
-    <text x="110" y="115" font-family="sans-serif" font-size="40" text-anchor="middle">🤖</text>
+    <!-- Robot icon (SVG drawn) -->
+    <rect x="90" y="82" width="40" height="30" rx="6" fill="#3F3F46"/>
+    <rect x="95" y="76" width="30" height="8" rx="4" fill="#3F3F46"/>
+    <circle cx="102" cy="97" r="4" fill="#F97316"/>
+    <circle cx="118" cy="97" r="4" fill="#F97316"/>
+    <rect x="100" y="106" width="20" height="3" rx="1.5" fill="#F97316"/>
+    <line x1="110" y1="76" x2="110" y2="68" stroke="#3F3F46" stroke-width="2"/>
+    <circle cx="110" cy="65" r="3" fill="#F97316"/>
     
     <!-- Status -->
     <rect x="55" y="160" width="110" height="28" rx="14" fill="#3B82F6" opacity="0.15" stroke="#3B82F6" stroke-width="1"/>
-    <circle cx="75" cy="174" r="4" fill="#3B82F6"/>
-    <text x="95" y="178" font-family="JetBrains Mono, monospace" font-size="11" fill="#3B82F6" text-anchor="middle">Running</text>
+    <circle cx="72" cy="174" r="4" fill="#3B82F6"/>
+    <text x="82" y="178" font-family="JetBrains Mono, monospace" font-size="11" fill="#3B82F6">Running</text>
     
     <!-- Agent info -->
     <text x="110" y="210" font-family="Inter, sans-serif" font-size="14" fill="#FAFAFA" text-anchor="middle" font-weight="500">Agent-Roo</text>
@@ -96,7 +103,13 @@
     
     <!-- Chat bubble -->
     <rect x="20" y="250" width="180" height="50" rx="8" fill="#27272A" stroke="#3F3F46" stroke-width="0.5"/>
-    <text x="30" y="270" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">💬 "Found 3 legacy refs to</text>
+    <!-- Chat icon (SVG drawn) -->
+    <rect x="28" y="262" width="14" height="10" rx="2" fill="#A1A1AA"/>
+    <polygon points="30,272 34,276 38,272" fill="#A1A1AA"/>
+    <circle cx="33" cy="267" r="1" fill="#27272A"/>
+    <circle cx="37" cy="267" r="1" fill="#27272A"/>
+    <circle cx="41" cy="267" r="1" fill="#27272A"/>
+    <text x="48" y="270" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">"Found 3 legacy refs to</text>
     <text x="30" y="285" font-family="Inter, sans-serif" font-size="10" fill="#A1A1AA">JWT library. Updating..."</text>
   </g>
   
