@@ -10,5 +10,6 @@ public static class CommentMarkdownPipeline
     public static MarkdownPipelineBuilder Configure(MarkdownPipelineBuilder builder)
         => builder
             .UseAdvancedExtensions()
+            .DisableHtml()
             .UseSoftlineBreakAsHardlineBreak();
 }

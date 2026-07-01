@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject LocalizationService L
+@inject IHttpClientFactory HttpFactory
 @implements IAsyncDisposable
 
 @if (_run is not null)
@@ -228,7 +229,7 @@
     {
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             var reports = await http.GetFromJsonAsync<List<DrawerRunner>>("/api/runners/health");
             _availableRunners = reports ?? new();
         }
@@ -297,7 +298,7 @@
     {
         if (_run is null || string.IsNullOrWhiteSpace(_steerText)) return;
         var payload = new { text = _steerText };
-        using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+        using var http = NewHttp();
         try
         {
             await http.PostAsJsonAsync($"/api/projects/{_run.ProjectSlug}/runs/{_run.RunId}/steer", payload);
@@ -310,7 +311,7 @@
     private async Task Stop()
     {
         if (_run is null) return;
-        using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+        using var http = NewHttp();
         try { await http.PostAsync($"/api/projects/{_run.ProjectSlug}/runs/{_run.RunId}/stop", null); } catch { }
     }
 
@@ -320,7 +321,7 @@
         _retrying = true;
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             var resp = await http.PostAsync($"/api/projects/{_run.ProjectSlug}/runs/{_run.RunId}/retry", null);
             if (resp.IsSuccessStatusCode)
             {
@@ -339,7 +340,7 @@
         _retrying = true;
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             var resp = await http.PostAsJsonAsync(
                 $"/api/projects/{_run.ProjectSlug}/runs/{_run.RunId}/retry",
                 new RetryRunRequest(runnerKind));
@@ -494,7 +495,7 @@
     }
 
     private static readonly MarkdownPipeline _mdPipeline =
-        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().DisableHtml().Build();
 
     private static string RenderMarkdown(string? text) =>
         string.IsNullOrEmpty(text) ? "" : Markdig.Markdown.ToHtml(text, _mdPipeline);
@@ -503,6 +504,13 @@
     {
         var d = DateTime.UtcNow - start;
         return d.TotalHours >= 1 ? $"{(int)d.TotalHours}h{d.Minutes:D2}" : $"{d.Minutes:D2}:{d.Seconds:D2}";
+    }
+
+    private HttpClient NewHttp()
+    {
+        var h = HttpFactory.CreateClient();
+        h.BaseAddress = new Uri(Nav.BaseUri);
+        return h;
     }
 
     public async ValueTask DisposeAsync()

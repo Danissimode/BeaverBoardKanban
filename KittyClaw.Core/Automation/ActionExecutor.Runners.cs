@@ -93,9 +93,9 @@ internal sealed partial class ActionExecutor
         }
         
         var resolver = new ExecutionResolver(
-            _rosterStore.Slots.ToDictionary(s => s.Key),
-            _rosterStore.Presets.ToDictionary(p => p.Key),
-            _rosterStore.Fallbacks.ToDictionary(f => f.Key),
+            _rosterStore.Slots.ToDictionary(s => s.Key, s => s.Value),
+            _rosterStore.Presets.ToDictionary(p => p.Key, p => p.Value),
+            _rosterStore.Fallbacks.ToDictionary(f => f.Key, f => f.Value),
             profiles,
             _rosterStore.ActivePresetId);
         

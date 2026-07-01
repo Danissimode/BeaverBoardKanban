@@ -32,28 +32,30 @@ public sealed class DashboardScriptRunner
     /// </summary>
     public async Task<ScriptResult> RunAsync(string scriptPath, string workspace, CancellationToken ct)
     {
+        // ── Sandbox: script must live inside the workspace (or .dashboard/ subfolder) ──
+        if (!IsPathWithinWorkspace(scriptPath, workspace))
+        {
+            _logger.LogWarning("Dashboard script rejected: path outside workspace. Script={Script} Workspace={Workspace}", scriptPath, workspace);
+            return ScriptResult.FromConfigError("Script path is outside the project workspace.");
+        }
+
         var ext = Path.GetExtension(scriptPath);
 
         string interpreter;
-        string args;
 
         switch (ext.ToLowerInvariant())
         {
             case ".ps1":
                 interpreter = ResolvePowerShell();
-                args = $"-NonInteractive -File \"{scriptPath}\"";
                 break;
             case ".sh":
                 interpreter = ResolveBash();
-                args = $"\"{scriptPath}\"";
                 break;
             case ".js":
                 interpreter = "node";
-                args = $"\"{scriptPath}\"";
                 break;
             case ".py":
                 interpreter = "python";
-                args = $"\"{scriptPath}\"";
                 break;
             default:
                 return ScriptResult.FromConfigError($"Unsupported script extension: {ext}. Supported: .ps1, .sh, .js, .py");
@@ -64,7 +66,6 @@ public sealed class DashboardScriptRunner
         var psi = new ProcessStartInfo
         {
             FileName = interpreter,
-            Arguments = args,
             WorkingDirectory = workspace,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -74,15 +75,33 @@ public sealed class DashboardScriptRunner
             CreateNoWindow = true,
         };
 
+        // Use ArgumentList to avoid shell-injection via scriptPath
+        switch (ext.ToLowerInvariant())
+        {
+            case ".ps1":
+                psi.ArgumentList.Add("-NonInteractive");
+                psi.ArgumentList.Add("-File");
+                psi.ArgumentList.Add(scriptPath);
+                break;
+            default:
+                psi.ArgumentList.Add(scriptPath);
+                break;
+        }
+
+        // Hard timeout: 5 minutes (dashboard scripts should be quick)
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+        var runCt = linkedCts.Token;
+
         try
         {
             using var process = Process.Start(psi)
                 ?? throw new InvalidOperationException($"Failed to start {interpreter}");
 
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-            var stderrTask = process.StandardError.ReadToEndAsync(ct);
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(runCt);
+            var stderrTask = process.StandardError.ReadToEndAsync(runCt);
 
-            await process.WaitForExitAsync(ct);
+            await process.WaitForExitAsync(runCt);
             var stdout = await stdoutTask;
             var stderr = await stderrTask;
 
@@ -93,12 +112,36 @@ public sealed class DashboardScriptRunner
 
             return ScriptResult.Success(stdout, stderr);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Dashboard script {Script} was cancelled or exceeded the 5-minute timeout", scriptPath);
+            return ScriptResult.FromConfigError("Script execution was cancelled or exceeded the 5-minute timeout.");
+        }
+        catch (Exception ex)
         {
             var msg = $"Failed to start interpreter '{interpreter}': {ex.Message}";
             _logger.LogWarning(ex, "Dashboard script {Script} could not be started", scriptPath);
             return ScriptResult.FromConfigError(msg);
         }
+    }
+
+    /// <summary>
+    /// Validates that the script path is inside the workspace tree (no path traversal).
+    /// </summary>
+    private static bool IsPathWithinWorkspace(string scriptPath, string workspace)
+    {
+        if (string.IsNullOrWhiteSpace(scriptPath) || string.IsNullOrWhiteSpace(workspace))
+            return false;
+        if (!Path.IsPathRooted(scriptPath) || !Path.IsPathRooted(workspace))
+            return false;
+        if (scriptPath.Contains(".."))
+            return false;
+        var fullScript = Path.GetFullPath(scriptPath);
+        var fullWorkspace = Path.GetFullPath(workspace);
+        // Also allow .dashboard/ subfolder
+        var dashboardDir = Path.Combine(fullWorkspace, ".dashboard");
+        return fullScript.StartsWith(fullWorkspace + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || fullScript.StartsWith(dashboardDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolvePowerShell() => ShellResolver.ResolvePowerShell();

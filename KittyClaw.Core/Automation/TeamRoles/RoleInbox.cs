@@ -48,6 +48,9 @@ public sealed class AssignmentClaim
     
     /// <summary>Which agent claimed the task</summary>
     public required string AgentProfileId { get; init; }
+
+    /// <summary>Which inbox message was claimed (links to the exact instruction)</summary>
+    public string? InboxMessageId { get; init; }
     
     /// <summary>Which ticket was claimed</summary>
     public required int TicketId { get; init; }

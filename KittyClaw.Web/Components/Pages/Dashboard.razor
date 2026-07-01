@@ -314,7 +314,7 @@ else
     private string? _activeRunDrawerId;
 
     private static readonly MarkdownPipeline _markdownPipeline =
-        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().DisableHtml().Build();
 
     // ── Tile chat ──
 

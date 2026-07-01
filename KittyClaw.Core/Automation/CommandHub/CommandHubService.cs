@@ -264,8 +264,8 @@ public sealed class CommandHubService
         ExternalThreadId = r.IsDBNull(r.GetOrdinal("ExternalThreadId")) ? null : r.GetString(r.GetOrdinal("ExternalThreadId")),
         ExternalUserId = r.IsDBNull(r.GetOrdinal("ExternalUserId")) ? null : r.GetString(r.GetOrdinal("ExternalUserId")),
         Status = r.GetString(r.GetOrdinal("Status")),
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))),
-        LastMessageAt = r.IsDBNull(r.GetOrdinal("LastMessageAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("LastMessageAt")))
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime,
+        LastMessageAt = r.IsDBNull(r.GetOrdinal("LastMessageAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("LastMessageAt"))).DateTime
     };
 
     private static CommandPlan ReadPlan(SqliteDataReader r) => new()
@@ -282,9 +282,9 @@ public sealed class CommandHubService
         CreatedBy = r.GetString(r.GetOrdinal("CreatedBy")),
         ApprovedBy = r.IsDBNull(r.GetOrdinal("ApprovedBy")) ? null : r.GetString(r.GetOrdinal("ApprovedBy")),
         RejectionReason = r.IsDBNull(r.GetOrdinal("RejectionReason")) ? null : r.GetString(r.GetOrdinal("RejectionReason")),
-        ExpiresAt = r.IsDBNull(r.GetOrdinal("ExpiresAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ExpiresAt"))),
-        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))),
-        ApprovedAt = r.IsDBNull(r.GetOrdinal("ApprovedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ApprovedAt"))),
-        ExecutedAt = r.IsDBNull(r.GetOrdinal("ExecutedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ExecutedAt")))
+        ExpiresAt = r.IsDBNull(r.GetOrdinal("ExpiresAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ExpiresAt"))).DateTime,
+        CreatedAt = DateTimeOffset.Parse(r.GetString(r.GetOrdinal("CreatedAt"))).DateTime,
+        ApprovedAt = r.IsDBNull(r.GetOrdinal("ApprovedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ApprovedAt"))).DateTime,
+        ExecutedAt = r.IsDBNull(r.GetOrdinal("ExecutedAt")) ? null : DateTimeOffset.Parse(r.GetString(r.GetOrdinal("ExecutedAt"))).DateTime
     };
 }

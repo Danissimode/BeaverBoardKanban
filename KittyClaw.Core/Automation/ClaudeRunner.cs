@@ -457,7 +457,8 @@ public sealed class ClaudeRunner
                 run.Push(new StreamEvent(DateTime.UtcNow, "error", $"stdin write failed: {ex.Message}"));
             }
 
-            var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, run.Cancellation.Token);
+            using var hardTimeoutCts = new CancellationTokenSource(TimeSpan.FromHours(2));
+            var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, run.Cancellation.Token, hardTimeoutCts.Token);
             var stdoutTask = ClaudeStreamPump.PumpStdoutAsync(proc, run, linked.Token);
             var stderrTask = ClaudeStreamPump.PumpStderrAsync(proc, run, linked.Token);
             var steerTask = ClaudeStreamPump.PumpSteeringAsync(proc, run, linked.Token);
@@ -509,7 +510,7 @@ public sealed class ClaudeRunner
                     // Exited right as we were cancelling — take the real exit code.
                     exit = proc.ExitCode;
                 }
-                else if (linked.IsCancellationRequested)
+                else if (ct.IsCancellationRequested || run.Cancellation.IsCancellationRequested)
                 {
                     // Genuine stop / external cancellation.
                     try { proc.Kill(entireProcessTree: true); } catch (Exception killEx) { _logger?.LogDebug(killEx, "Kill failed during stop cancellation"); }
@@ -519,6 +520,16 @@ public sealed class ClaudeRunner
                     run.OnEvent -= counter;
                     run.OnEvent -= resultWatch;
                     return new SpawnResult(null, assistantCount, true, hitQuota == 1);
+                }
+                else if (hardTimeoutCts.IsCancellationRequested)
+                {
+                    // Hard timeout (2 hours) — the process never finished or emitted a result.
+                    _logger.LogWarning(
+                        "{Agent} run={RunId} exceeded the 2-hour hard timeout; killing the process tree",
+                        ctx.AgentName, run.RunId);
+                    try { proc.Kill(entireProcessTree: true); } catch (Exception killEx) { _logger?.LogDebug(killEx, "Kill failed during hard timeout"); }
+                    job?.Dispose();
+                    exit = -1;
                 }
                 else
                 {

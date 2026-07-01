@@ -30,6 +30,7 @@ public sealed class OpenCodeRunner : IAgentRunner
     private readonly AgentRunRegistry _runRegistry;
     private readonly ILogger<OpenCodeRunner>? _logger;
     private readonly IProviderModelCatalog? _modelCatalog;
+    private readonly IHttpClientFactory? _httpFactory;
     
     // Process tracking for StopAsync support
     private readonly ConcurrentDictionary<string, Process> _processes = new();
@@ -43,12 +44,14 @@ public sealed class OpenCodeRunner : IAgentRunner
         OpenCodeConfig config,
         AgentRunRegistry runRegistry,
         ILogger<OpenCodeRunner>? logger = null,
-        IProviderModelCatalog? modelCatalog = null)
+        IProviderModelCatalog? modelCatalog = null,
+        IHttpClientFactory? httpFactory = null)
     {
         _config = config;
         _runRegistry = runRegistry;
         _logger = logger;
         _modelCatalog = modelCatalog;
+        _httpFactory = httpFactory;
     }
     
     private bool CheckAvailability()
@@ -230,7 +233,9 @@ public sealed class OpenCodeRunner : IAgentRunner
         var contextFile = WriteContextFile(workingDir, agentRun.RunId, request, executionMetadata);
 
         // Start the run via POST /api/runs
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        using var httpClient = _httpFactory is not null
+            ? _httpFactory.CreateClient()
+            : new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         
         // Prepend pending steer messages to prompt for server mode
         var effectivePrompt = request.Prompt ?? "";
@@ -553,13 +558,16 @@ public sealed class OpenCodeRunner : IAgentRunner
         var processInfo = new ProcessStartInfo
         {
             FileName = cliCommand,
-            Arguments = string.Join(" ", arguments),
             WorkingDirectory = workingDir,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        foreach (var arg in arguments)
+        {
+            processInfo.ArgumentList.Add(arg);
+        }
         
         // Copy environment variables
         foreach (var env in request.Environment)

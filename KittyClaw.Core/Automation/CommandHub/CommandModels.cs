@@ -113,6 +113,12 @@ public sealed class CommandPlan
     /// <summary>JSON array of actions to execute</summary>
     public required string ActionsJson { get; init; }
     
+    /// <summary>JSON result data after execution</summary>
+    public string? ResultJson { get; set; }
+    
+    /// <summary>Alias for MessageId — the source message that triggered this plan</summary>
+    public string SourceMessageId => MessageId;
+    
     /// <summary>Who created the plan</summary>
     public required string CreatedBy { get; init; }
     
@@ -128,6 +134,24 @@ public sealed class CommandPlan
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime? ApprovedAt { get; set; }
     public DateTime? ExecutedAt { get; set; }
+}
+
+/// <summary>
+/// Command plan statuses.
+/// </summary>
+public static class CommandPlanStatuses
+{
+    public const string Draft = "draft";
+    public const string PendingApproval = "pending_approval";
+    public const string Approved = "approved";
+    public const string Executing = "executing";
+    public const string Completed = "completed";
+    public const string PartiallyFailed = "partially_failed";
+    public const string Failed = "failed";
+    public const string Cancelled = "cancelled";
+    public const string Expired = "expired";
+    public const string Rejected = "rejected";
+    public const string Executed = "executed";
 }
 
 /// <summary>

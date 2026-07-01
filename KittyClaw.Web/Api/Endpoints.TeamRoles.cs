@@ -30,7 +30,18 @@ public static class EndpointsTeamRoles
         group.MapPut("/projects/{slug}/roles/{roleId}", async (
             string slug, string roleId, TeamRole role, TeamRoleStore store) =>
         {
-            var result = await store.UpsertRoleAsync(role with { Id = roleId, ProjectSlug = slug });
+            var result = await store.UpsertRoleAsync(new TeamRole
+            {
+                Id = roleId,
+                ProjectSlug = slug,
+                Slug = role.Slug,
+                Name = role.Name,
+                Description = role.Description,
+                DefaultExecutionProfileId = role.DefaultExecutionProfileId,
+                CapabilitiesJson = role.CapabilitiesJson,
+                RiskLimit = role.RiskLimit,
+                Enabled = role.Enabled
+            });
             return Results.Ok(result);
         })
         .WithName("UpsertRole")
@@ -56,7 +67,18 @@ public static class EndpointsTeamRoles
         group.MapPut("/projects/{slug}/agents/{agentId}", async (
             string slug, string agentId, AgentProfile agent, TeamRoleStore store) =>
         {
-            var result = await store.UpsertAgentAsync(agent with { Id = agentId, ProjectSlug = slug });
+            var result = await store.UpsertAgentAsync(new AgentProfile
+            {
+                Id = agentId,
+                ProjectSlug = slug,
+                DisplayName = agent.DisplayName,
+                RoleId = agent.RoleId,
+                ExecutionProfileId = agent.ExecutionProfileId,
+                Status = agent.Status,
+                MaxConcurrentRuns = agent.MaxConcurrentRuns,
+                CurrentRunCount = agent.CurrentRunCount,
+                Enabled = agent.Enabled
+            });
             return Results.Ok(result);
         })
         .WithName("UpsertAgent")
@@ -65,16 +87,38 @@ public static class EndpointsTeamRoles
         // ── Execution Profiles ──────────────────────────────────────────
         group.MapGet("/projects/{slug}/execution-profiles", async (string slug, TeamRoleStore store) =>
         {
-            // TODO: Implement list
-            return Results.Ok(new List<ExecutionProfile>());
+            var profiles = await store.GetExecutionProfilesAsync(slug);
+            return Results.Ok(profiles);
         })
         .WithName("ListExecutionProfiles")
         .WithDescription("List all execution profiles");
 
+        group.MapGet("/projects/{slug}/execution-profiles/{profileId}", async (string slug, string profileId, TeamRoleStore store) =>
+        {
+            var profile = await store.GetExecutionProfileAsync(slug, profileId);
+            return profile is not null ? Results.Ok(profile) : Results.NotFound();
+        })
+        .WithName("GetExecutionProfile")
+        .WithDescription("Get a specific execution profile");
+
         group.MapPut("/projects/{slug}/execution-profiles/{profileId}", async (
             string slug, string profileId, ExecutionProfile profile, TeamRoleStore store) =>
         {
-            var result = await store.UpsertExecutionProfileAsync(profile with { Id = profileId, ProjectSlug = slug });
+            var result = await store.UpsertExecutionProfileAsync(new ExecutionProfile
+            {
+                Id = profileId,
+                ProjectSlug = slug,
+                Name = profile.Name,
+                Runtime = profile.Runtime,
+                Provider = profile.Provider,
+                Model = profile.Model,
+                OpencodeModel = profile.OpencodeModel,
+                PermissionsJson = profile.PermissionsJson,
+                WorktreeRequired = profile.WorktreeRequired,
+                MaxTurns = profile.MaxTurns,
+                TimeoutMinutes = profile.TimeoutMinutes,
+                Enabled = profile.Enabled
+            });
             return Results.Ok(result);
         })
         .WithName("UpsertExecutionProfile")
@@ -114,7 +158,17 @@ public static class EndpointsTeamRoles
         group.MapPut("/projects/{slug}/roles/{roleId}/policies/{policyId}", async (
             string slug, string roleId, string policyId, RolePolicy policy, TeamRoleStore store) =>
         {
-            var result = await store.UpsertPolicyAsync(policy with { Id = policyId, ProjectSlug = slug, RoleId = roleId });
+            var result = await store.UpsertPolicyAsync(new RolePolicy
+            {
+                Id = policyId,
+                ProjectSlug = slug,
+                RoleId = roleId,
+                Action = policy.Action,
+                Effect = policy.Effect,
+                ConditionJson = policy.ConditionJson,
+                Reason = policy.Reason,
+                Enabled = policy.Enabled
+            });
             return Results.Ok(result);
         })
         .WithName("UpsertRolePolicy")
@@ -231,8 +285,16 @@ public static class EndpointsTeamRoles
             [FromBody] ConversationPolicy policy,
             RoleInboxStore store) =>
         {
-            policy.ProjectSlug = slug;
-            var result = await store.UpsertPolicyAsync(policy);
+            var result = await store.UpsertPolicyAsync(new ConversationPolicy
+            {
+                Id = policy.Id,
+                ProjectSlug = slug,
+                ReplyPolicy = policy.ReplyPolicy,
+                AllowDirectAgentMentions = policy.AllowDirectAgentMentions,
+                AutoSummarizeRoleResponses = policy.AutoSummarizeRoleResponses,
+                ShowCriticalEventsInMain = policy.ShowCriticalEventsInMain,
+                AlwaysVisibleRolesJson = policy.AlwaysVisibleRolesJson
+            });
             return Results.Ok(result);
         })
         .WithName("UpdateConversationPolicy")
@@ -249,6 +311,64 @@ public static class EndpointsTeamRoles
         })
         .WithName("RouteMessage")
         .WithDescription("Route a user message through the communication system");
+
+        // ── Orchestrator ──────────────────────────────────────────────────
+        group.MapPost("/projects/{slug}/orchestrator/plan", async (
+            string slug,
+            [FromBody] CreatePlanRequest request,
+            OrchestrationService orchestrator) =>
+        {
+            var plan = await orchestrator.PlanAsync(
+                slug, request.ConversationId, request.MessageId,
+                request.Text, request.UserId ?? "owner");
+            return Results.Ok(plan);
+        })
+        .WithName("CreatePlan")
+        .WithDescription("Create an orchestration command plan");
+
+        group.MapPost("/projects/{slug}/orchestrator/plans/{planId}/approve", async (
+            string slug, string planId,
+            [FromBody] ApprovePlanRequest request,
+            OrchestrationService orchestrator) =>
+        {
+            var result = await orchestrator.ApproveAndExecuteAsync(slug, planId, request.ApprovedBy ?? "owner");
+            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+        })
+        .WithName("ApprovePlan")
+        .WithDescription("Approve and execute a command plan");
+
+        group.MapPost("/projects/{slug}/orchestrator/plans/{planId}/cancel", async (
+            string slug, string planId,
+            OrchestrationService orchestrator) =>
+        {
+            var cancelled = await orchestrator.CancelPlanAsync(slug, planId);
+            return cancelled ? Results.Ok(new { cancelled = true }) : Results.BadRequest(new { cancelled = false });
+        })
+        .WithName("CancelPlan")
+        .WithDescription("Cancel a pending command plan");
+
+        group.MapGet("/projects/{slug}/orchestrator/plans", async (
+            string slug,
+            OrchestrationService orchestrator) =>
+        {
+            var plans = await orchestrator.ListPlansAsync(slug);
+            return Results.Ok(plans);
+        })
+        .WithName("ListPlans")
+        .WithDescription("List command plans for a project");
+
+        // ── Dispatch ─────────────────────────────────────────────────────
+        group.MapPost("/projects/{slug}/tickets/{ticketId}/dispatch", async (
+            string slug, int ticketId,
+            [FromBody] DispatchRequest request,
+            OrchestrationService orchestrator) =>
+        {
+            var message = await orchestrator.DispatchTicketToRoleAsync(
+                slug, ticketId, request.RoleId, request.Text, request.PostedBy ?? "orchestrator");
+            return Results.Ok(message);
+        })
+        .WithName("DispatchTicket")
+        .WithDescription("Dispatch a ticket to a role inbox");
 
         group.MapGet("/projects/{slug}/activity", async (
             string slug,
@@ -287,4 +407,7 @@ public static class EndpointsTeamRoles
     );
     public record UpdateStateRequest(string State);
     public record RouteMessageRequest(string Text, string? UserId);
+    public record CreatePlanRequest(string ConversationId, string MessageId, string Text, string? UserId);
+    public record ApprovePlanRequest(string? ApprovedBy);
+    public record DispatchRequest(string RoleId, string Text, string? PostedBy);
 }

@@ -5,6 +5,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject LocalizationService L
+@inject IHttpClientFactory HttpFactory
 @implements IAsyncDisposable
 
 <div class="chat-drawer-overlay" @onclick="Close"></div>
@@ -272,7 +273,7 @@
             return;
         }
 
-        using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+        using var http = NewHttp();
         try
         {
             var resp = await http.GetFromJsonAsync<TargetsResponse>($"/api/projects/{ProjectSlug}/chat/targets");
@@ -303,7 +304,7 @@
         string? latestMessageAt = null;
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             var msgs = await http.GetFromJsonAsync<List<ServerChatMessage>>(
                 $"/api/projects/{ProjectSlug}/chat/messages?target={Uri.EscapeDataString(target.Slug)}");
             if (msgs is not null)
@@ -343,7 +344,7 @@
     {
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             var resp = await http.GetFromJsonAsync<ActiveResponse>(
                 $"/api/projects/{ProjectSlug}/chat/active?target={Uri.EscapeDataString(target.Slug)}");
             if (resp?.RunId is not string runId) return;
@@ -378,7 +379,7 @@
     {
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             var runners = await http.GetFromJsonAsync<List<ChatRunner>>($"/api/chat/runners");
             if (runners is not null)
             {
@@ -436,7 +437,7 @@
         await StopStream();
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             await http.DeleteAsync($"/api/projects/{ProjectSlug}/chat/session?target={Uri.EscapeDataString(_activeTarget.Slug)}");
         }
         catch { /* best-effort */ }
@@ -490,7 +491,7 @@
         _inputText = "";
         StateHasChanged();
 
-        using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+        using var http = NewHttp();
         try
         {
             var resp = await http.PostAsJsonAsync(
@@ -555,7 +556,7 @@
 
         await StopStream();
 
-        using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+        using var http = NewHttp();
         try
         {
             // Use chat/start-v2 which supports runner selection
@@ -710,7 +711,7 @@
         if (runId == null) return;
         msg.IsAnswered = true;
         StateHasChanged();
-        using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+        using var http = NewHttp();
         try
         {
             await http.PostAsJsonAsync($"/api/projects/{ProjectSlug}/runs/{runId}/steer", new { text = answer });
@@ -756,7 +757,7 @@
         if (string.IsNullOrEmpty(runId)) return;
         try
         {
-            using var http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+            using var http = NewHttp();
             await http.PostAsync($"/api/projects/{ProjectSlug}/runs/{runId}/stop", content: null);
         }
         catch { /* best-effort: if the stop call fails the SSE will still detach below */ }
@@ -769,6 +770,13 @@
     {
         await StopStream();
         if (OnClose.HasDelegate) await OnClose.InvokeAsync();
+    }
+
+    private HttpClient NewHttp()
+    {
+        var h = HttpFactory.CreateClient();
+        h.BaseAddress = new Uri(Nav.BaseUri);
+        return h;
     }
 
     public async ValueTask DisposeAsync()

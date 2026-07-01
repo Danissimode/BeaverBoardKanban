@@ -109,7 +109,19 @@ public partial class ProjectService
         await using var db = new RegistryDbContext(_registryPath);
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Slug == slug);
         if (project is null) return null;
-        project.WorkspacePath = string.IsNullOrWhiteSpace(workspacePath) ? null : workspacePath.Trim();
+
+        if (!string.IsNullOrWhiteSpace(workspacePath))
+        {
+            var trimmed = workspacePath.Trim();
+            if (!IsValidWorkspacePath(trimmed))
+                throw new ArgumentException("Invalid workspace path. Path must be absolute, cannot contain '..' sequences, and cannot point to system directories.");
+            project.WorkspacePath = trimmed;
+        }
+        else
+        {
+            project.WorkspacePath = null;
+        }
+
         if (updateFallback)
         {
             project.FallbackModel = string.IsNullOrWhiteSpace(fallbackModel) ? null : fallbackModel.Trim();
@@ -143,6 +155,30 @@ public partial class ProjectService
     }
 
     public string GetProjectDbPath(string slug) => Path.Combine(_dataDir, "projects", $"{slug}.db");
+
+    private static bool IsValidWorkspacePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        // Reject relative paths
+        if (!Path.IsPathRooted(path)) return false;
+        // Reject paths containing parent-directory traversal before normalization
+        if (path.Contains("..")) return false;
+        var full = Path.GetFullPath(path);
+        // Reject system-sensitive directories
+        var systemRoots = new[]
+        {
+            Path.DirectorySeparatorChar.ToString(),
+            "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64", "/sys", "/proc", "/dev", "/boot", "/var",
+            @"C:\", @"C:\Windows", @"C:\Program Files", @"C:\Program Files (x86)",
+            @"C:\ProgramData", @"C:\Users\Public"
+        };
+        foreach (var root in systemRoots)
+        {
+            if (full.Equals(root, StringComparison.OrdinalIgnoreCase)) return false;
+            if (root.Length > 1 && full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return false;
+        }
+        return true;
+    }
 
     public TodoDbContext GetProjectDb(string slug)
     {

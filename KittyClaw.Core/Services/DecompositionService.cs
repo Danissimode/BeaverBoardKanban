@@ -171,11 +171,11 @@ public sealed class DecompositionService
                     childSpec.Description ?? "",
                     decomposedBy ?? "system",
                     "Backlog",
-                    null, // labels
+                    null, // labelIds
                     TicketPriority.NiceToHave,
                     null, // assignee
                     ticketId, // parentId
-                    null, null, null, null, null, null, null, null, null, null, true, null);
+                    null, null, null, null, null, null, null, null, null, null, null);
 
                 if (childTicket is not null)
                 {
