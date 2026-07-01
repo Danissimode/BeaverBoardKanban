@@ -119,5 +119,117 @@ public static class EndpointsTeamRoles
         })
         .WithName("UpsertRolePolicy")
         .WithDescription("Create or update a role policy");
+
+        // ── Role Inboxes ────────────────────────────────────────────────
+        group.MapGet("/projects/{slug}/inboxes", async (string slug, RoleInboxStore store) =>
+        {
+            var inboxes = await store.GetInboxesAsync(slug);
+            return Results.Ok(inboxes);
+        })
+        .WithName("ListInboxes")
+        .WithDescription("List all role inboxes");
+
+        group.MapGet("/projects/{slug}/inboxes/{inboxId}/pending", async (
+            string slug, string inboxId, RoleInboxStore store) =>
+        {
+            var messages = await store.PendingMessagesAsync(slug, inboxId);
+            return Results.Ok(messages);
+        })
+        .WithName("GetPendingMessages")
+        .WithDescription("Get pending messages in an inbox");
+
+        group.MapPost("/projects/{slug}/inboxes/{inboxId}/post", async (
+            string slug, string inboxId,
+            [FromBody] PostMessageRequest request,
+            RoleInboxStore store) =>
+        {
+            var message = await store.PostMessageAsync(new InboxMessage
+            {
+                ProjectSlug = slug,
+                RoleInboxId = inboxId,
+                TicketId = request.TicketId,
+                Text = request.Text,
+                PostedBy = request.PostedBy ?? "owner",
+                RequiredSkillsJson = request.RequiredSkillsJson
+            });
+            return Results.Ok(message);
+        })
+        .WithName("PostToInbox")
+        .WithDescription("Post a message to a role inbox");
+
+        group.MapPost("/projects/{slug}/inboxes/messages/{messageId}/claim", async (
+            string slug, string messageId,
+            [FromBody] ClaimMessageRequest request,
+            RoleInboxStore store) =>
+        {
+            var result = await store.ClaimMessageAsync(slug, messageId, request.AgentId);
+            return result ? Results.Ok(new { claimed = true }) : Results.NotFound();
+        })
+        .WithName("ClaimMessage")
+        .WithDescription("Agent claims a message from inbox");
+
+        // ── Sessions ────────────────────────────────────────────────────
+        group.MapGet("/projects/{slug}/sessions/active", async (string slug, RoleInboxStore store) =>
+        {
+            var sessions = await store.ActiveSessionsAsync(slug);
+            return Results.Ok(sessions);
+        })
+        .WithName("GetActiveSessions")
+        .WithDescription("Get all active member sessions");
+
+        group.MapGet("/projects/{slug}/tickets/{ticketId}/sessions", async (
+            string slug, int ticketId, RoleInboxStore store) =>
+        {
+            var sessions = await store.SessionsForTicketAsync(slug, ticketId);
+            return Results.Ok(sessions);
+        })
+        .WithName("GetSessionsForTicket")
+        .WithDescription("Get all sessions for a ticket");
+
+        group.MapPost("/projects/{slug}/sessions", async (
+            string slug,
+            [FromBody] CreateSessionRequest request,
+            RoleInboxStore store) =>
+        {
+            var session = await store.CreateSessionAsync(new TeamMemberSession
+            {
+                ProjectSlug = slug,
+                RoleId = request.RoleId,
+                AgentProfileId = request.AgentProfileId,
+                TicketId = request.TicketId,
+                RunId = request.RunId,
+                OpencodeSessionId = request.OpencodeSessionId,
+                ExecutionProfileId = request.ExecutionProfileId
+            });
+            return Results.Ok(session);
+        })
+        .WithName("CreateSession")
+        .WithDescription("Create a new member session");
+
+        group.MapPut("/projects/{slug}/sessions/{sessionId}/state", async (
+            string slug, string sessionId,
+            [FromBody] UpdateStateRequest request,
+            RoleInboxStore store) =>
+        {
+            var result = await store.UpdateSessionStateAsync(slug, sessionId, request.State);
+            return result ? Results.Ok(new { updated = true }) : Results.NotFound();
+        })
+        .WithName("UpdateSessionState")
+        .WithDescription("Update session state");
     }
+
+    public record SendCommandRequest(string Text, string? UserId);
+    public record ApproveRequest(string ApprovedBy);
+    public record RejectRequest(string? Reason);
+    public record PostMessageRequest(int TicketId, string Text, string? PostedBy, string? RequiredSkillsJson);
+    public record ClaimMessageRequest(string AgentId);
+    public record CreateSessionRequest(
+        string RoleId,
+        string AgentProfileId,
+        int TicketId,
+        string? RunId,
+        string? OpencodeSessionId,
+        string? ExecutionProfileId
+    );
+    public record UpdateStateRequest(string State);
 }
