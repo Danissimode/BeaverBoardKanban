@@ -62,10 +62,9 @@ builder.Services.AddSingleton<TeamRoleStore>(sp =>
 builder.Services.AddSingleton<RoleInboxStore>(sp =>
     new RoleInboxStore(dataDir, sp.GetRequiredService<ILogger<RoleInboxStore>>()));
 builder.Services.AddSingleton<MessageRouter>();
-// TODO: Add these services when implemented
-// builder.Services.AddSingleton<AgentSelector>();
-// builder.Services.AddSingleton<RolePolicyEvaluator>();
-// builder.Services.AddSingleton<OrchestrationService>();
+builder.Services.AddSingleton<AgentSelector>();
+builder.Services.AddSingleton<RolePolicyEvaluator>();
+builder.Services.AddSingleton<OrchestrationService>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardFilterState>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardSortState>();
 builder.Services.AddSingleton<SettingsService>();

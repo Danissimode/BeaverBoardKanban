@@ -1,4 +1,4 @@
-﻿using KittyClaw.Core.Services;
+using KittyClaw.Core.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace KittyClaw.Core.Tests.Services;
@@ -24,11 +24,12 @@ public sealed class DashboardScriptRunnerTests
     [Fact]
     public async Task RunAsync_UnsupportedExtension_ReturnsConfigError()
     {
-        var result = await _runner.RunAsync("script.bat", Directory.GetCurrentDirectory(), CancellationToken.None);
+        var scriptPath = Path.Combine(Directory.GetCurrentDirectory(), "script.bat");
+        var result = await _runner.RunAsync(scriptPath, Directory.GetCurrentDirectory(), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         Assert.NotNull(result.ConfigError);
-        Assert.Contains("Unsupported", result.ConfigError);
+        Assert.Contains("Unsupported", result.ConfigError, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

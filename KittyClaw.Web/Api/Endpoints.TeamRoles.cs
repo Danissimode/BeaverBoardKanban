@@ -334,7 +334,7 @@ public static class EndpointsTeamRoles
             var result = await orchestrator.ApproveAndExecuteAsync(slug, planId, request.ApprovedBy ?? "owner");
             return result.Success ? Results.Ok(result) : Results.BadRequest(result);
         })
-        .WithName("ApprovePlan")
+        .WithName("OrchestrateApprovePlan")
         .WithDescription("Approve and execute a command plan");
 
         group.MapPost("/projects/{slug}/orchestrator/plans/{planId}/cancel", async (
