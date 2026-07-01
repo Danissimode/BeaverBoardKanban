@@ -433,6 +433,18 @@ internal sealed partial class ActionExecutor
                 _logger.LogInformation(
                     "Roster resolved for ticket #{TicketId}: slot={Slot}, model={Model}, agent={Agent}, reason={Reason}",
                     firing.TicketId, rosterResolved.AssignedSlotId, rosterResolved.ResolvedModel, rosterResolved.ResolvedAgent, rosterResolved.Reason);
+                
+                // Update agent name and skill file if roster resolved a different agent
+                if (!string.IsNullOrEmpty(rosterResolved.ResolvedAgent) && rosterResolved.ResolvedAgent != agentName)
+                {
+                    agentName = rosterResolved.ResolvedAgent;
+                    skillFile = $"{agentName}/SKILL.md";
+                    group = string.IsNullOrEmpty(a.ConcurrencyGroup)
+                        ? agentName
+                        : a.ConcurrencyGroup
+                            .Replace("{assignee}", agentName)
+                            .Replace("{ticketId}", firing.TicketId?.ToString() ?? "none");
+                }
             }
         }
 
@@ -528,13 +540,16 @@ internal sealed partial class ActionExecutor
             RunId = runId,
             ProjectSlug = rt.Slug,
             TicketId = firing.TicketId,
-            AgentName = agentName,
+            // Use roster-resolved agent name if available, otherwise use original
+            AgentName = rosterResolved?.ResolvedAgent ?? agentName,
             SkillFile = skillFile,
             ConcurrencyGroup = group,
             StartedAt = DateTime.UtcNow,
             RuntimeId = runtimeId,
             RoleId = roleId,
-            ModelProfileId = modelProfileId,
+            // Use roster-resolved model profile if available
+            ModelProfileId = rosterResolved?.ModelProfileId ?? modelProfileId,
+            Model = rosterResolved?.ResolvedModel,
             // ── Control Plane: Store roster resolution snapshot ──
             ExecutionMetadata = rosterResolved is not null ? new ExecutionMetadata
             {
