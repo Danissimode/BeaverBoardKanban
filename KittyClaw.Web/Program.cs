@@ -48,6 +48,8 @@ builder.Services.AddSingleton<MemberService>();
 builder.Services.AddSingleton<ChatService>();
 builder.Services.AddSingleton<DashboardService>();
 builder.Services.AddSingleton<AgentsTemplateService>();
+builder.Services.AddSingleton<TreeService>();
+builder.Services.AddSingleton<DependencyStore>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardFilterState>();
 builder.Services.AddScoped<KittyClaw.Web.Services.BoardSortState>();
 builder.Services.AddSingleton<SettingsService>();
@@ -299,10 +301,10 @@ if (app.Environment.IsDevelopment())
     }).ExcludeFromDescription();
 }
 
-app.MapGet("/api/docs", async (HttpContext ctx) =>
+app.MapGet("/api/docs", async (HttpContext ctx, IHttpClientFactory httpFactory) =>
 {
     var baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
-    using var client = new HttpClient();
+    using var client = httpFactory.CreateClient();
     var json = await client.GetStringAsync($"{baseUrl}/openapi/v1.json");
     using var doc = JsonDocument.Parse(json);
     var markdown = OpenApiMarkdownGenerator.Generate(doc);

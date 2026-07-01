@@ -21,6 +21,52 @@ public class Ticket
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? ParentId { get; set; }
 
+    // ── Hierarchical Kanban ─────────────────────────────────────────────
+    /// <summary>Root ticket ID for this subtree (top-level parent)</summary>
+    public int? RootId { get; set; }
+    
+    /// <summary>Depth in tree: 0=root, 1=task, 2=subtask</summary>
+    public int Depth { get; set; }
+    
+    /// <summary>Materialized path for fast subtree queries (e.g., "1/5/23")</summary>
+    public string? Path { get; set; }
+    
+    /// <summary>Order among siblings</summary>
+    public int TreeOrder { get; set; }
+    
+    /// <summary>Ticket kind: epic, task, subtask, checklist_item, decision, review, qa, release</summary>
+    public string Kind { get; set; } = "task";
+    
+    /// <summary>Execution role: orchestrator, planner, worker, reviewer, joiner</summary>
+    public string? ExecutionRole { get; set; }
+    
+    /// <summary>Execution mode: manual, sequential, parallel, join</summary>
+    public string ExecutionMode { get; set; } = "manual";
+    
+    /// <summary>Parallel group ID (if part of a parallel execution group)</summary>
+    public string? ParallelGroupId { get; set; }
+    
+    /// <summary>Dependency policy: all_dependencies_done, any_dependency_done</summary>
+    public string DependencyPolicy { get; set; } = "all_dependencies_done";
+    
+    /// <summary>Aggregate policy: children_define_progress, manual, all_must_pass</summary>
+    public string AggregatePolicy { get; set; } = "children_define_progress";
+    
+    /// <summary>Child count for quick display (denormalized)</summary>
+    public int ChildCount { get; set; }
+    
+    /// <summary>Completed child count for progress</summary>
+    public int ChildrenDoneCount { get; set; }
+    
+    /// <summary>Failed child count</summary>
+    public int ChildrenFailedCount { get; set; }
+    
+    /// <summary>Blocked child count</summary>
+    public int ChildrenBlockedCount { get; set; }
+    
+    /// <summary>Has active run in subtree</summary>
+    public bool SubtreeHasActiveRun { get; set; }
+
     // ── Plan workflow ───────────────────────────────────────────────────
     /// <summary>Current plan status: none, drafting, awaiting-approval, approved, rejected.</summary>
     public string PlanStatus { get; set; } = "none";
