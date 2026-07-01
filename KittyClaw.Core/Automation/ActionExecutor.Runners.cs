@@ -25,6 +25,7 @@ internal sealed partial class ActionExecutor
     private IExecutionPolicyService? _policyService;
     private IWorktreeService? _worktreeService;
     private RosterStore? _rosterStore;
+    private TicketSlotAssignmentStore? _ticketSlotStore;
     
     /// <summary>
     /// Initialize runner services (called from constructor)
@@ -34,13 +35,15 @@ internal sealed partial class ActionExecutor
         ITicketExecutionMetadataStore? metadataStore = null,
         IExecutionPolicyService? policyService = null,
         IWorktreeService? worktreeService = null,
-        RosterStore? rosterStore = null)
+        RosterStore? rosterStore = null,
+        TicketSlotAssignmentStore? ticketSlotStore = null)
     {
         _runnerRegistry = runnerRegistry;
         _metadataStore = metadataStore;
         _policyService = policyService;
         _worktreeService = worktreeService;
         _rosterStore = rosterStore;
+        _ticketSlotStore = ticketSlotStore;
         
         if (_runnerRegistry is not null)
         {
@@ -75,6 +78,18 @@ internal sealed partial class ActionExecutor
         {
             // No roster configured - skip resolution
             return null;
+        }
+        
+        // Get assignment from global store if not provided
+        if (_ticketSlotStore is not null && string.IsNullOrEmpty(assignedSlotId))
+        {
+            var assignment = _ticketSlotStore.Get(ticketId.Value);
+            if (assignment is not null)
+            {
+                assignedSlotId = assignment.AssignedSlotId;
+                overrideModelProfileId = assignment.OverrideModelProfileId;
+                lockExecutor = assignment.LockExecutor;
+            }
         }
         
         var resolver = new ExecutionResolver(

@@ -63,6 +63,10 @@ builder.Services.AddSingleton<AgentRunRegistry>(sp => new AgentRunRegistry(sp.Ge
 var rosterStore = new RosterStore(dataDir);
 rosterStore.Load();
 builder.Services.AddSingleton(rosterStore);
+// Ticket slot assignment store (global, not project-specific)
+var ticketSlotStore = new TicketSlotAssignmentStore(dataDir);
+ticketSlotStore.Load();
+builder.Services.AddSingleton(ticketSlotStore);
 // Cap concurrent claude subprocesses across all projects (chats bypass). Override with the
 // KITTYCLAW_MAX_CONCURRENT_AGENTS env var if 3 is too tight or too loose for the host.
 var maxConcurrent = int.TryParse(Environment.GetEnvironmentVariable("KITTYCLAW_MAX_CONCURRENT_AGENTS"), out var mc) && mc > 0 ? mc : 3;
