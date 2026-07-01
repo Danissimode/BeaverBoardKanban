@@ -165,4 +165,20 @@ public sealed class ExecutionMetadata
     public string? OpenCodeAgent { get; set; }
     public bool SteerSupported { get; set; } = true;
     public string? LastError { get; set; }
+    
+    // ── Control Plane: Roster resolution snapshot ──────────────────────
+    /// <summary>Which execution slot this run was assigned to</summary>
+    public string? AssignedSlotId { get; set; }
+    
+    /// <summary>Roster preset that was active when this run started</summary>
+    public string? RosterPresetId { get; set; }
+    
+    /// <summary>Fallback policy applied to this run</summary>
+    public string? FallbackPolicyId { get; set; }
+    
+    /// <summary>Why this resolution was made: slot-default, override, fallback, etc.</summary>
+    public string? ResolutionReason { get; set; }
+    
+    /// <summary>If this run was handed off from a previous executor, the previous run ID</summary>
+    public string? HandoffFromRunId { get; set; }
 }

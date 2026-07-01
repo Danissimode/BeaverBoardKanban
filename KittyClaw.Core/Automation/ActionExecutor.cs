@@ -418,6 +418,24 @@ internal sealed partial class ActionExecutor
             }
             return (true, null, agentName);
         }
+        // ── Control Plane: Resolve from roster if ticket has slot assignment ──
+        ResolvedExecution? rosterResolved = null;
+        if (ticket is not null && _rosterStore is not null)
+        {
+            rosterResolved = ResolveFromRoster(
+                firing.TicketId,
+                ticket.AssignedSlotId,
+                ticket.OverrideModelProfileId,
+                ticket.LockExecutor);
+            
+            if (rosterResolved is not null)
+            {
+                _logger.LogInformation(
+                    "Roster resolved for ticket #{TicketId}: slot={Slot}, model={Model}, agent={Agent}, reason={Reason}",
+                    firing.TicketId, rosterResolved.AssignedSlotId, rosterResolved.ResolvedModel, rosterResolved.ResolvedAgent, rosterResolved.Reason);
+            }
+        }
+
         var prompt = _promptBuilder.BuildPrompt(new AgentRunRequest(
             ProjectSlug: rt.Slug,
             WorkspacePath: rt.Workspace!,
@@ -470,6 +488,22 @@ internal sealed partial class ActionExecutor
             ConcurrencyGroup = group,
         };
 
+        // ── Control Plane: Apply roster resolution to runtime config ──
+        if (rosterResolved is not null)
+        {
+            // Roster model takes precedence over default model
+            if (!string.IsNullOrEmpty(rosterResolved.ResolvedModel))
+            {
+                runtimeConfig = runtimeConfig with { Model = rosterResolved.ResolvedModel };
+            }
+            
+            // Roster agent takes precedence if explicitly resolved
+            if (!string.IsNullOrEmpty(rosterResolved.ResolvedAgent))
+            {
+                runtimeConfig = runtimeConfig with { Agent = rosterResolved.ResolvedAgent };
+            }
+        }
+
         var request = new AgentRunRequest(
             ProjectSlug: rt.Slug,
             WorkspacePath: rt.Workspace!,
@@ -501,6 +535,23 @@ internal sealed partial class ActionExecutor
             RuntimeId = runtimeId,
             RoleId = roleId,
             ModelProfileId = modelProfileId,
+            // ── Control Plane: Store roster resolution snapshot ──
+            ExecutionMetadata = rosterResolved is not null ? new ExecutionMetadata
+            {
+                Mode = runtimeConfig.Id,
+                Runner = runtimeId,
+                Model = rosterResolved.ResolvedModel,
+                OpenCodeAgent = rosterResolved.ResolvedAgent,
+                Profile = roleId,
+                RunId = runId,
+                TicketId = firing.TicketId?.ToString(),
+                ProjectId = rt.Slug,
+                AssignedSlotId = rosterResolved.AssignedSlotId,
+                RosterPresetId = rosterResolved.RosterPresetId,
+                FallbackPolicyId = rosterResolved.FallbackPolicyId,
+                ResolutionReason = rosterResolved.Reason,
+                HandoffFromRunId = rosterResolved.HandoffFromRunId
+            } : null
         };
         _runs.Register(run);
         _sessions.SetLastDispatched(rt.Workspace!, agentName, DateTime.UtcNow);
