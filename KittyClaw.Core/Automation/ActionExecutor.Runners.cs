@@ -24,6 +24,7 @@ internal sealed partial class ActionExecutor
     private ITicketExecutionMetadataStore? _metadataStore;
     private IExecutionPolicyService? _policyService;
     private IWorktreeService? _worktreeService;
+    private RosterStore? _rosterStore;
     
     /// <summary>
     /// Initialize runner services (called from constructor)
@@ -32,18 +33,73 @@ internal sealed partial class ActionExecutor
         RunnerRegistry? runnerRegistry = null,
         ITicketExecutionMetadataStore? metadataStore = null,
         IExecutionPolicyService? policyService = null,
-        IWorktreeService? worktreeService = null)
+        IWorktreeService? worktreeService = null,
+        RosterStore? rosterStore = null)
     {
         _runnerRegistry = runnerRegistry;
         _metadataStore = metadataStore;
         _policyService = policyService;
         _worktreeService = worktreeService;
+        _rosterStore = rosterStore;
         
         if (_runnerRegistry is not null)
         {
             _logger.LogInformation("RunnerRegistry initialized with {RunnerCount} runners", 
                 _runnerRegistry.GetAllRunners().Count());
         }
+    }
+    
+    /// <summary>
+    /// Resolve execution plan from roster (Control Plane).
+    /// Returns null if roster is not configured or ticket has no slot assignment.
+    /// </summary>
+    private ResolvedExecution? ResolveFromRoster(
+        int? ticketId,
+        string? assignedSlotId,
+        string? overrideModelProfileId,
+        bool lockExecutor)
+    {
+        if (_rosterStore is null || ticketId is null)
+        {
+            return null;
+        }
+        
+        // Load profiles from config
+        var profiles = new Dictionary<string, Runtimes.ModelProfileConfig>();
+        // TODO: Load from AgentRuntimeProjectConfig
+        
+        var resolver = new ExecutionResolver(
+            _rosterStore.Slots.ToDictionary(s => s.Key),
+            _rosterStore.Presets.ToDictionary(p => p.Key),
+            _rosterStore.Fallbacks.ToDictionary(f => f.Key),
+            profiles,
+            _rosterStore.ActivePresetId);
+        
+        return resolver.Resolve(
+            ticketId.Value,
+            assignedSlotId,
+            overrideModelProfileId,
+            lockExecutor);
+    }
+    
+    /// <summary>
+    /// Apply resolved execution plan to runner request.
+    /// Sets model, agent, and other fields from the roster resolution.
+    /// </summary>
+    private RunnerRequest ApplyRosterResolution(RunnerRequest request, ResolvedExecution resolved)
+    {
+        // Only apply if roster resolved a model/agent
+        if (string.IsNullOrEmpty(resolved.ResolvedModel) && string.IsNullOrEmpty(resolved.ResolvedAgent))
+        {
+            return request;
+        }
+        
+        return request with
+        {
+            Model = resolved.ResolvedModel ?? request.Model,
+            // Provider is extracted from model string (e.g., "kimi/kimi-2.7-code" -> provider is implicit)
+            // The runner will handle provider resolution from the model string
+        };
     }
     
     /// <summary>
