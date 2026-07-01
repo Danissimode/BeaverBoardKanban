@@ -229,6 +229,13 @@
                 </div>
             }
 
+            @if (!string.IsNullOrWhiteSpace(_workspaceValidation))
+            {
+                <div class="settings-status settings-status-err">
+                    <span>⚠️ @_workspaceValidation</span>
+                </div>
+            }
+
             @if (_creationStatus is not null)
             {
                 <div class="settings-status @_creationStatus.Value.css">@_creationStatus.Value.text</div>
@@ -255,7 +262,7 @@
 
             <div class="modal-actions">
                 <button class="header-action-btn" @onclick="CancelCreation" disabled="@_initializing">@L["Cancel"]</button>
-                <button class="header-action-btn settings-primary" @onclick="StartInitialize" disabled="@(_initializing || _initConflicts is not null || string.IsNullOrWhiteSpace(_newWorkspacePath) || _workspaceExists != true)">
+                <button class="header-action-btn settings-primary" @onclick="StartInitialize" disabled="@(_initializing || _initConflicts is not null || string.IsNullOrWhiteSpace(_newWorkspacePath) || _workspaceExists != true || !string.IsNullOrEmpty(_workspaceValidation))">
                     @(_initializing ? "…" : L["Initialize"])
                 </button>
             </div>
@@ -284,6 +291,7 @@
     private bool _initializing;
     private bool _creatingFolder;
     private bool? _workspaceExists;
+    private string? _workspaceValidation;
     private bool _showOnboarding;
     private bool _onboardingEvaluated;
     private bool _opencodeInstalled;
@@ -443,7 +451,54 @@
     private void OnWorkspaceChanged()
     {
         var path = _newWorkspacePath?.Trim();
-        _workspaceExists = string.IsNullOrEmpty(path) ? (bool?)null : Directory.Exists(path);
+        if (string.IsNullOrEmpty(path))
+        {
+            _workspaceExists = null;
+            _workspaceValidation = null;
+            return;
+        }
+
+        _workspaceExists = Directory.Exists(path);
+        _workspaceValidation = ValidateWorkspacePath(path);
+    }
+
+    private string? ValidateWorkspacePath(string path)
+    {
+        // Check for invalid characters
+        if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return L["InvalidPathCharacters"];
+
+        // Check if path is too long
+        if (path.Length > 4096)
+            return L["PathTooLong"];
+
+        // Check if it's a system directory
+        var normalized = Path.GetFullPath(path);
+        if (normalized.Equals("/") || normalized.Equals("/System") ||
+            normalized.StartsWith("/System/", StringComparison.Ordinal))
+            return L["CannotUseSystemDirectory"];
+
+        // Check write permissions by trying to create a temp file
+        try
+        {
+            var testDir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+            if (testDir is not null)
+            {
+                var testFile = Path.Combine(testDir, ".beaverboard-write-test");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return L["NoWritePermission"];
+        }
+        catch (Exception)
+        {
+            // Parent directory might not exist yet, that's OK
+        }
+
+        return null;
     }
 
     private void CreateWorkspaceFolder()
@@ -527,6 +582,18 @@
 
             await AgentsTemplate.InitializeAsync(_newWorkspacePath.Trim(), overwrite);
             await EnsureAgentMembersAsync(project.Slug);
+            
+            // Generate workspace configuration files
+            var configGenerator = new WorkspaceConfigGenerator();
+            await configGenerator.GenerateOpenCodeConfigAsync(
+                _newWorkspacePath.Trim(),
+                project.Slug,
+                _defaultRunner == "opencode" ? "openrouter" : null,
+                _opencodeModel);
+            await configGenerator.GenerateProjectRulesAsync(
+                _newWorkspacePath.Trim(),
+                project.Slug);
+            
             await AutomationEngine.ReloadProjectAsync(project.Slug);
 
             _pendingName = null;
