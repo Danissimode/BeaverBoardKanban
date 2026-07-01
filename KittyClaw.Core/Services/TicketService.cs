@@ -132,6 +132,13 @@ public class TicketService
         catch { /* column already exists */ }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN ForbiddenPaths TEXT NULL"); }
         catch { /* column already exists */ }
+        // Control Plane: Execution slot assignment columns
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN AssignedSlotId TEXT NULL"); }
+        catch { /* column already exists */ }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN OverrideModelProfileId TEXT NULL"); }
+        catch { /* column already exists */ }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Tickets ADD COLUMN LockExecutor INTEGER NOT NULL DEFAULT 0"); }
+        catch { /* column already exists */ }
     }
 
     public async Task<List<TicketSummary>> ListTicketsAsync(string projectSlug, string? statusFilter = null, TicketPriority? priorityFilter = null, string? assignedTo = null, string? createdBy = null, string? search = null, int? parentId = null)

@@ -422,11 +422,27 @@ internal sealed partial class ActionExecutor
         ResolvedExecution? rosterResolved = null;
         if (ticket is not null && _rosterStore is not null)
         {
+            // Read assignment from global store (not from ticket model)
+            string? assignedSlotId = null;
+            string? overrideModelProfileId = null;
+            bool lockExecutor = false;
+            
+            if (_ticketSlotStore is not null)
+            {
+                var assignment = _ticketSlotStore.Get(firing.TicketId.Value);
+                if (assignment is not null)
+                {
+                    assignedSlotId = assignment.AssignedSlotId;
+                    overrideModelProfileId = assignment.OverrideModelProfileId;
+                    lockExecutor = assignment.LockExecutor;
+                }
+            }
+            
             rosterResolved = ResolveFromRoster(
                 firing.TicketId,
-                ticket.AssignedSlotId,
-                ticket.OverrideModelProfileId,
-                ticket.LockExecutor);
+                assignedSlotId,
+                overrideModelProfileId,
+                lockExecutor);
             
             if (rosterResolved is not null)
             {
